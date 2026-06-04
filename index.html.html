@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BSE Operations Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#0f111a;color:#e5e7eb;height:100vh;display:flex;overflow:hidden}
+.sidebar{width:195px;min-width:195px;background:#0a0c14;border-right:0.5px solid rgba(255,255,255,0.07);display:flex;flex-direction:column}
+.sb-logo{padding:16px 14px 12px;border-bottom:0.5px solid rgba(255,255,255,0.07)}
+.sb-brand{color:#fff;font-size:13px;font-weight:600}
+.sb-sub{color:#6b7280;font-size:10px;margin-top:2px}
+.sb-nav{padding:10px 8px;flex:1;overflow-y:auto}
+.sb-sec{color:#4b5563;font-size:9px;letter-spacing:1px;padding:10px 8px 4px;text-transform:uppercase;font-weight:600}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;color:#9ca3af;font-size:11.5px;margin:1px 0;transition:all 0.15s;border-left:2px solid transparent}
+.ni:hover{background:rgba(255,255,255,0.05);color:#e5e7eb}
+.ni.active{background:rgba(99,102,241,0.15);color:#818cf8;border-left:2px solid #6366f1;border-radius:0 6px 6px 0}
+.ni-icon{font-size:14px;width:16px;text-align:center}
+.sb-foot{padding:10px;border-top:0.5px solid rgba(255,255,255,0.07)}
+.role{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(99,102,241,0.1);border-radius:6px;border:0.5px solid rgba(99,102,241,0.2)}
+.av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:600}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{padding:10px 18px;border-bottom:0.5px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;background:#0a0c14;gap:12px;flex-wrap:wrap}
+.tb-left{flex:1;min-width:0}
+.pt{color:#f9fafb;font-size:14px;font-weight:500}
+.ps{color:#6b7280;font-size:11px;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.filter-bar{display:flex;align-items:center;gap:5px}
+.filter-bar select,.filter-bar input{background:#161820;border:0.5px solid rgba(255,255,255,0.1);color:#d1d5db;padding:4px 8px;border-radius:6px;font-size:11px;outline:none;cursor:pointer}
+.filter-bar input[type=search]{width:130px}
+.filter-bar input[type=date]{width:115px}
+.filter-bar select:hover,.filter-bar input:hover{border-color:rgba(99,102,241,0.4)}
+.rbtn{background:rgba(99,102,241,0.15);border:0.5px solid rgba(99,102,241,0.3);color:#818cf8;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;transition:all 0.15s}
+.rbtn:hover{background:rgba(99,102,241,0.25)}
+.rbtn.red{background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#f87171}
+.lpill{display:flex;align-items:center;gap:5px;background:rgba(16,185,129,0.1);border:0.5px solid rgba(16,185,129,0.25);padding:3px 10px;border-radius:20px;color:#34d399;font-size:11px}
+.ldot{width:6px;height:6px;border-radius:50%;background:#10b981;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.content{flex:1;overflow-y:auto;padding:14px 18px}
+.tabs{display:flex;gap:4px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px}
+.tab{padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;color:#6b7280;border:0.5px solid transparent;white-space:nowrap;transition:all 0.15s}
+.tab:hover{color:#e5e7eb;background:rgba(255,255,255,0.05)}
+.tab.active{background:rgba(99,102,241,0.15);color:#818cf8;border-color:rgba(99,102,241,0.3)}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px}
+.kcard{background:#161820;border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px;transition:all 0.15s}
+.kcard:hover{border-color:rgba(99,102,241,0.3);background:#1c1e2e}
+.klabel{color:#6b7280;font-size:9px;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;font-weight:500}
+.kval{color:#f9fafb;font-size:22px;font-weight:500;line-height:1}
+.kdelta{display:inline-flex;align-items:center;gap:3px;font-size:10px;margin-top:5px;padding:2px 6px;border-radius:10px}
+.up{background:rgba(16,185,129,0.1);color:#34d399}
+.warn{background:rgba(245,158,11,0.1);color:#fbbf24}
+.dn{background:rgba(239,68,68,0.1);color:#f87171}
+.info{background:rgba(59,130,246,0.1);color:#60a5fa}
+.srow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.srow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.panel{background:#161820;border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px}
+.panel.full{grid-column:1/-1}
+.panel.span2{grid-column:span 2}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ptitle{color:#e5e7eb;font-size:12px;font-weight:500}
+.pbadge{font-size:10px;color:#6b7280;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:10px}
+.pbadge.red{background:rgba(239,68,68,0.1);color:#f87171}
+.pbadge.green{background:rgba(16,185,129,0.1);color:#34d399}
+.cw{position:relative;height:160px;width:100%}
+.cw-lg{position:relative;height:200px;width:100%}
+.cw-sm{position:relative;height:130px;width:100%}
+.dept{display:none}
+.dept.active{display:block}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{text-align:left;color:#4b5563;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;padding:5px 6px;border-bottom:0.5px solid rgba(255,255,255,0.06);font-weight:500}
+td{color:#d1d5db;font-size:11px;padding:6px 6px;border-bottom:0.5px solid rgba(255,255,255,0.04);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.pill{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:500}
+.pg{background:rgba(16,185,129,0.1);color:#34d399}
+.py{background:rgba(245,158,11,0.1);color:#fbbf24}
+.pr{background:rgba(239,68,68,0.1);color:#f87171}
+.pb{background:rgba(59,130,246,0.1);color:#60a5fa}
+.pp{background:rgba(139,92,246,0.1);color:#a78bfa}
+.loading{display:flex;align-items:center;justify-content:center;height:300px;color:#6b7280;font-size:12px;gap:8px;flex-direction:column}
+.spin{width:24px;height:24px;border:2px solid rgba(99,102,241,0.3);border-top-color:#818cf8;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lupd{color:#4b5563;font-size:10px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.bar-label{color:#9ca3af;font-size:10px;width:90px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width 0.6s ease}
+.bar-val{color:#d1d5db;font-size:10px;width:36px;flex-shrink:0;text-align:right}
+.alert-bar{position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;flex-direction:column;gap:2px;pointer-events:none}
+.alert-item{display:flex;align-items:center;gap:10px;padding:9px 18px;font-size:12px;pointer-events:all;animation:slideDown 0.3s ease}
+@keyframes slideDown{from{transform:translateY(-40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.alert-red{background:rgba(185,28,28,0.97);color:#fecaca;border-bottom:1px solid rgba(239,68,68,0.3)}
+.alert-yellow{background:rgba(120,53,15,0.97);color:#fef3c7;border-bottom:1px solid rgba(245,158,11,0.3)}
+.alert-green{background:rgba(6,78,59,0.97);color:#d1fae5;border-bottom:1px solid rgba(16,185,129,0.3)}
+.alert-close{margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;font-size:16px;opacity:0.7;padding:0 4px}
+.alert-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
+.health-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px}
+.health-card{border-radius:8px;padding:12px;border:0.5px solid}
+.digest-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.digest-card{background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px}
+.digest-title{color:#e5e7eb;font-size:11px;font-weight:500;margin-bottom:8px}
+.digest-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)}
+.digest-label{color:#9ca3af;font-size:10px}
+.digest-val{font-size:10px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="alert-bar" class="alert-bar"></div>
+
+<div class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-brand">Brightside English</div>
+    <div class="sb-sub">Operations Command Center</div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-sec">Overview</div>
+    <div class="ni active" onclick="sw('coo',this)"><span class="ni-icon">🎯</span>COO Summary</div>
+    <div class="sb-sec">Core Ops</div>
+    <div class="ni" onclick="sw('razorpay',this)"><span class="ni-icon">💳</span>Payments</div>
+    <div class="ni" onclick="sw('sales',this)"><span class="ni-icon">🎯</span>Sales</div>
+    <div class="ni" onclick="sw('students',this)"><span class="ni-icon">📚</span>Learners</div>
+    <div class="ni" onclick="sw('teachers',this)"><span class="ni-icon">🎓</span>Tutors</div>
+    <div class="ni" onclick="sw('sessions',this)"><span class="ni-icon">📅</span>Sessions</div>
+    <div class="ni" onclick="sw('courses',this)"><span class="ni-icon">📋</span>Courses</div>
+    <div class="sb-sec">Support & Growth</div>
+    <div class="ni" onclick="sw('escalations',this)"><span class="ni-icon">⚠️</span>Escalations</div>
+    <div class="ni" onclick="sw('content',this)"><span class="ni-icon">📸</span>Content Metrics</div>
+    <div class="ni" onclick="sw('hr',this)"><span class="ni-icon">👥</span>HR Pipeline</div>
+  </div>
+  <div class="sb-foot">
+    <div class="role">
+      <div class="av">J</div>
+      <div>
+        <div style="color:#e5e7eb;font-size:11px;font-weight:500">Admin</div>
+        <div style="color:#818cf8;font-size:10px">COO · BSE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="pt" id="pt">COO Summary</div>
+      <div class="ps" id="ps">All departments at a glance • Live</div>
+    </div>
+    <div class="tb-right">
+      <div class="filter-bar">
+        <input type="search" id="f-search" placeholder="🔍 Search..." oninput="applyFilters()" style="width:120px">
+        <select id="f-month" onchange="applyFilters()">
+          <option value="">All months</option>
+          <option>Jan</option><option>Feb</option><option>Mar</option>
+          <option>Apr</option><option>May</option><option>Jun</option>
+          <option>Jul</option><option>Aug</option><option>Sep</option>
+          <option>Oct</option><option>Nov</option><option>Dec</option>
+        </select>
+        <input type="date" id="f-from" onchange="applyFilters()" title="From date">
+        <input type="date" id="f-to" onchange="applyFilters()" title="To date">
+        <select id="f-team" onchange="applyFilters()">
+          <option value="">All team</option>
+          <option>Mansi</option><option>Vaibhav</option><option>Deepak</option>
+          <option>Ajay</option><option>Ashik</option><option>Joshua</option>
+          <option>Sameer</option><option>Sakshi</option><option>Jonah</option>
+          <option>Megha</option><option>Leona</option><option>Kavya</option>
+        </select>
+        <select id="f-course" onchange="applyFilters()">
+          <option value="">All courses</option>
+          <option>Stride</option><option>Stride Elite</option>
+          <option>Stride Pro</option><option>Century</option>
+          <option>Century Elite</option><option>Transformation</option>
+          <option>Demo</option>
+        </select>
+        <button class="rbtn" onclick="clearFilters()">✕ Clear</button>
+      </div>
+      <span class="lupd" id="lupd"></span>
+      <button class="rbtn" onclick="loadData()">⟳ Refresh</button>
+      <div class="lpill"><div class="ldot"></div>Live</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="tabs">
+      <div class="tab active" onclick="sw('coo',this)">🎯 COO</div>
+      <div class="tab" onclick="sw('razorpay',this)">💳 Payments</div>
+      <div class="tab" onclick="sw('sales',this)">🎯 Sales</div>
+      <div class="tab" onclick="sw('students',this)">📚 Learners</div>
+      <div class="tab" onclick="sw('teachers',this)">🎓 Tutors</div>
+      <div class="tab" onclick="sw('sessions',this)">📅 Sessions</div>
+      <div class="tab" onclick="sw('courses',this)">📋 Courses</div>
+      <div class="tab" onclick="sw('escalations',this)">⚠️ Escalations</div>
+      <div class="tab" onclick="sw('content',this)">📸 Content</div>
+      <div class="tab" onclick="sw('hr',this)">👥 HR</div>
+    </div>
+
+    <div id="loading" class="loading"><div class="spin"></div><span>Loading live data...</span></div>
+
+    <!-- COO SUMMARY -->
+    <div id="dept-coo" class="dept">
+      <div class="health-grid" id="coo-health"></div>
+      <div class="kgrid" id="coo-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Revenue trend (14 days)</div></div><div class="cw"><canvas id="cooRevChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Sales pipeline stages</div></div><div class="cw"><canvas id="cooPipeChart"></canvas></div></div>
+      </div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Session outcomes</div></div><div class="cw-sm"><canvas id="cooSessChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Top closers</div></div><div id="coo-closer-bars" style="padding-top:4px"></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">📋 Daily digest</div><div class="pbadge" id="coo-digest-date"></div></div>
+        <div class="digest-grid" id="coo-digest"></div>
+      </div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div id="dept-razorpay" class="dept">
+      <div class="kgrid" id="rz-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Payment status</div></div><div class="cw"><canvas id="rzStatusChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Revenue by day</div></div><div class="cw"><canvas id="rzTrendChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph">
+          <div class="ptitle">Revenue trend</div>
+          <div style="display:flex;gap:4px">
+            <button class="rbtn" id="rz-weekly-btn" onclick="rzToggle('weekly')" style="font-size:10px;padding:3px 8px">Weekly</button>
+            <button class="rbtn" id="rz-monthly-btn" onclick="rzToggle('monthly')" style="font-size:10px;padding:3px 8px;opacity:0.5">Monthly</button>
+          </div>
+        </div>
+        <div class="cw-lg"><canvas id="rzToggleChart"></canvas></div>
+      </div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Payment methods</div></div><div class="cw-sm"><canvas id="rzMethodChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Recent transactions</div><div class="pbadge" id="rz-count"></div></div>
+          <div style="overflow-y:auto;max-height:140px">
+            <table><thead><tr><th style="width:32%">Customer</th><th style="width:18%">Amount</th><th style="width:28%">Date</th><th style="width:22%">Status</th></tr></thead>
+            <tbody id="rz-table"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SALES -->
+    <div id="dept-sales" class="dept">
+      <div class="kgrid" id="sl-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Pipeline stage breakdown</div></div><div class="cw"><canvas id="slPipelineChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Revenue closed by date</div><div class="pbadge">₹</div></div><div class="cw"><canvas id="slRevenueChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Lead conversion funnel</div></div>
+        <div class="cw-lg"><canvas id="slFunnelChart"></canvas></div>
+      </div>
+      <div class="srow3">
+        <div class="panel"><div class="ph"><div class="ptitle">Lead source mix</div></div><div class="cw-sm"><canvas id="slSourceChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Course enrolled</div></div><div class="cw-sm"><canvas id="slCourseChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Top closers</div></div><div id="sl-closer-bars" style="padding-top:4px"></div></div>
+      </div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Lead rating (Qualifier)</div></div><div class="cw-sm"><canvas id="slRatingChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">City-wise leads</div></div><div id="sl-city-bars" style="padding-top:4px"></div></div>
+      </div>
+      <!-- Intelligence -->
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Profession breakdown</div><div class="pbadge">lead intel</div></div><div class="cw"><canvas id="slProfessionChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Industry breakdown</div></div><div class="cw"><canvas id="slIndustryChart"></canvas></div></div>
+      </div>
+      <div class="srow3">
+        <div class="panel"><div class="ph"><div class="ptitle">Purpose of upskilling</div></div><div class="cw-sm"><canvas id="slPurposeChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Specific pain points</div></div><div class="cw-sm"><canvas id="slPainChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Professional life stage</div></div><div class="cw-sm"><canvas id="slLifeStageChart"></canvas></div></div>
+      </div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Lever analysis (L1+L2+L3)</div><div class="pbadge">tactics</div></div><div class="cw"><canvas id="slLeverChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Top states</div></div><div id="sl-state-bars" style="padding-top:4px"></div></div>
+      </div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Previous coach / platform</div></div><div class="cw-sm"><canvas id="slPrevCoachChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Personal life context</div></div><div class="cw-sm"><canvas id="slPersonalCtxChart"></canvas></div></div>
+      </div>
+      <!-- Qualifier, Aging, Lost -->
+      <div class="srow3">
+        <div class="panel"><div class="ph"><div class="ptitle">Qualifier performance</div><div class="pbadge">conv %</div></div><div id="sl-qualifier-bars" style="padding-top:4px"></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Lead aging 7+ days</div><div class="pbadge red" id="sl-aging-count"></div></div>
+          <div style="overflow-y:auto;max-height:160px">
+            <table><thead><tr><th style="width:40%">Name</th><th style="width:35%">Stage</th><th style="width:25%">Days</th></tr></thead>
+            <tbody id="sl-aging-table"></tbody></table>
+          </div>
+        </div>
+        <div class="panel"><div class="ph"><div class="ptitle">Lost deals by stage</div></div><div class="cw-sm"><canvas id="slLostChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Lead pipeline</div><div class="pbadge" id="sl-count"></div></div>
+        <div style="overflow-y:auto;max-height:220px">
+          <table><thead><tr>
+            <th style="width:14%">Name</th><th style="width:9%">City</th><th style="width:10%">Source</th>
+            <th style="width:9%">Profession</th><th style="width:10%">Qualifier</th><th style="width:10%">Closer</th>
+            <th style="width:13%">Stage</th><th style="width:9%">Closed</th><th style="width:10%">Course</th><th style="width:6%">Rating</th>
+          </tr></thead>
+          <tbody id="sl-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEARNERS -->
+    <div id="dept-students" class="dept">
+      <div class="kgrid" id="st-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Top subjects</div></div><div class="cw"><canvas id="stSubjectChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Joiners by month</div></div><div class="cw"><canvas id="stMonthChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Cohort analysis</div></div>
+        <div class="cw-lg"><canvas id="stCohortChart"></canvas></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Learner list</div><div class="pbadge" id="st-count"></div></div>
+        <div style="overflow-y:auto;max-height:220px">
+          <table><thead><tr><th style="width:22%">Name</th><th style="width:25%">Email</th><th style="width:20%">Course</th><th style="width:18%">Subject</th><th style="width:15%">Joined</th></tr></thead>
+          <tbody id="st-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TUTORS -->
+    <div id="dept-teachers" class="dept">
+      <div class="kgrid" id="tc-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Joined by month</div></div><div class="cw"><canvas id="tcMonthChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Active vs inactive</div></div><div class="cw"><canvas id="tcStatusChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Tutor roster</div><div class="pbadge" id="tc-count"></div></div>
+        <div style="overflow-y:auto;max-height:240px">
+          <table><thead><tr><th style="width:22%">Name</th><th style="width:28%">Email</th><th style="width:18%">Phone</th><th style="width:18%">Joined</th><th style="width:14%">Status</th></tr></thead>
+          <tbody id="tc-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESSIONS -->
+    <div id="dept-sessions" class="dept">
+      <div class="kgrid" id="ss-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Session outcomes</div></div><div class="cw"><canvas id="ssStatusChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Sessions by hour</div></div><div class="cw"><canvas id="ssHourChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Completion rate over time</div></div>
+        <div class="cw-lg"><canvas id="ssCompletionChart"></canvas></div>
+      </div>
+      <div class="srow3">
+        <div class="panel"><div class="ph"><div class="ptitle">Tutor missed sessions</div><div class="pbadge red" id="ss-missed-badge"></div></div><div id="ss-missed-bars" style="padding-top:4px"></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Peak hours heatmap</div></div><div class="cw-sm"><canvas id="ssHeatChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Attendance pattern</div></div><div class="cw-sm"><canvas id="ssAttendChart"></canvas></div></div>
+      </div>
+      <div class="srow">
+        <div class="panel span2"><div class="ph"><div class="ptitle">Top tutors by sessions</div></div><div id="ss-tutor-bars"></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Session list</div><div class="pbadge" id="ss-count"></div></div>
+        <div style="overflow-y:auto;max-height:200px">
+          <table><thead><tr><th style="width:28%">Title</th><th style="width:20%">Teacher</th><th style="width:20%">Course</th><th style="width:18%">Start</th><th style="width:14%">Status</th></tr></thead>
+          <tbody id="ss-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COURSES -->
+    <div id="dept-courses" class="dept">
+      <div class="kgrid" id="co-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Subject distribution</div></div><div class="cw"><canvas id="coSubjectChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Created by month</div></div><div class="cw"><canvas id="coMonthChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Course list</div><div class="pbadge" id="co-count"></div></div>
+        <div style="overflow-y:auto;max-height:220px">
+          <table><thead><tr><th style="width:35%">Name</th><th style="width:25%">Subject</th><th style="width:20%">Students</th><th style="width:20%">Created</th></tr></thead>
+          <tbody id="co-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESCALATIONS -->
+    <div id="dept-escalations" class="dept">
+      <div class="kgrid" id="es-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Status breakdown</div></div><div class="cw"><canvas id="esStatusChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Escalation types</div></div><div class="cw"><canvas id="esTypeChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Open escalations</div><div class="pbadge red" id="es-count"></div></div>
+        <div style="overflow-y:auto;max-height:240px">
+          <table><thead><tr><th style="width:20%">Learner</th><th style="width:20%">Course</th><th style="width:15%">Tutor</th><th style="width:30%">Issue</th><th style="width:15%">Status</th></tr></thead>
+          <tbody id="es-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div id="dept-content" class="dept">
+      <div class="kgrid" id="ct-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Views & Reach trend</div><div class="pbadge">last 20 posts</div></div><div class="cw-lg"><canvas id="ctTrendChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Engagement breakdown</div></div><div class="cw-lg"><canvas id="ctEngageChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Engagement rate trend</div><div class="pbadge">per post</div></div>
+        <div class="cw-lg"><canvas id="ctEngTrendChart"></canvas></div>
+      </div>
+      <div class="srow3">
+        <div class="panel"><div class="ph"><div class="ptitle">Post type mix</div></div><div class="cw-sm"><canvas id="ctTypeChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Best day to post</div></div><div class="cw-sm"><canvas id="ctDayChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Follower growth</div></div><div class="cw-sm"><canvas id="ctFollowChart"></canvas></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Content log</div><div class="pbadge" id="ct-count"></div></div>
+        <div style="overflow-y:auto;max-height:200px">
+          <table><thead><tr><th style="width:10%">Date</th><th style="width:10%">Type</th><th style="width:10%">Views</th><th style="width:10%">Reach</th><th style="width:8%">Likes</th><th style="width:8%">Shares</th><th style="width:8%">Comments</th><th style="width:8%">Saves</th><th style="width:8%">Follows</th><th style="width:10%">Published</th></tr></thead>
+          <tbody id="ct-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HR -->
+    <div id="dept-hr" class="dept">
+      <div class="kgrid" id="hr-kpis"></div>
+      <div class="srow">
+        <div class="panel"><div class="ph"><div class="ptitle">Hiring funnel</div></div><div class="cw"><canvas id="hrFunnelChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Hiring status</div></div><div class="cw"><canvas id="hrStatusChart"></canvas></div></div>
+      </div>
+      <div class="srow3">
+        <div class="panel"><div class="ph"><div class="ptitle">Role distribution</div></div><div class="cw-sm"><canvas id="hrRoleChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Interview pass rate</div></div><div class="cw-sm"><canvas id="hrPassChart"></canvas></div></div>
+        <div class="panel"><div class="ph"><div class="ptitle">Interviewer load</div></div><div id="hr-interviewer-bars" style="padding-top:4px"></div></div>
+      </div>
+      <div class="panel full" style="margin-bottom:14px">
+        <div class="ph"><div class="ptitle">Candidate pipeline</div><div class="pbadge" id="hr-count"></div></div>
+        <div style="overflow-y:auto;max-height:240px">
+          <table><thead><tr><th style="width:16%">Name</th><th style="width:14%">Role</th><th style="width:11%">Done By</th><th style="width:9%">1st</th><th style="width:9%">2nd</th><th style="width:9%">Final</th><th style="width:14%">Status</th><th style="width:10%">Phone</th><th style="width:8%">Joining</th></tr></thead>
+          <tbody id="hr-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API='https://script.google.com/macros/s/AKfycbxMre8WNIm84195l99Foh7Jc_c_uK-zLwue3i9dNbEOLrVg1ZylT3yJ_oTS7axsy9woMg/exec';
+const DARK='rgba(255,255,255,0.07)';
+const C={purple:'#818cf8',green:'#34d399',amber:'#fbbf24',red:'#f87171',blue:'#60a5fa',teal:'#2dd4bf',pink:'#f472b6',orange:'#fb923c'};
+let charts={},rawData={},currentDept='coo';
+
+// Alert email config — add recipient emails here
+const ALERT_EMAILS=['justy@brightsidenglish.com'];
+
+const titles={coo:'COO Summary',razorpay:'Payments',sales:'Sales Pipeline',students:'Learners',teachers:'Tutors',sessions:'Sessions',courses:'Courses',escalations:'Escalations',content:'Content Metrics',hr:'HR Pipeline'};
+const subs={coo:'All departments at a glance • Live',razorpay:'Razorpay transactions • Live',sales:'CRM lead & closure data • Live',students:'Wise learner data • Live',teachers:'Wise tutor roster • Live',sessions:'Last 90 days • Live',courses:'Wise course catalog • Live',escalations:'Escalation tracker • Live',content:'Instagram & Social performance • Live',hr:'Hiring pipeline • Live'};
+
+// ── Alert system ──
+function showAlert(msg,type='yellow',id=null){
+  const bar=document.getElementById('alert-bar');
+  const aid=id||'a'+Date.now();
+  if(document.getElementById('alert-'+aid))return;
+  const el=document.createElement('div');
+  el.className=`alert-item alert-${type}`;
+  el.id='alert-'+aid;
+  el.innerHTML=`<span class="alert-dot"></span><span>${msg}</span><button class="alert-close" onclick="this.parentElement.remove()">×</button>`;
+  bar.appendChild(el);
+  setTimeout(()=>{if(el.parentElement)el.remove();},10000);
+}
+
+function checkAlerts(data){
+  const rz=data.razorpay||[];
+  const es=data.escalations||[];
+  const sl=data.sales||[];
+
+  // Razorpay: authorized payments
+  const authorized=rz.filter(r=>(r['Status']||'').toLowerCase()==='authorized');
+  if(authorized.length>0){
+    showAlert(`💳 ${authorized.length} payment(s) in "authorized" status — action needed!`,'red','rz-auth');
+  }
+
+  // Razorpay: high failure rate
+  const rzFail=rz.filter(r=>r['Status']==='failed');
+  if(rz.length&&rzFail.length/rz.length>0.3){
+    showAlert(`⚠️ Payment failure rate is ${Math.round(rzFail.length/rz.length*100)}% — check Razorpay`,'red','rz-fail');
+  }
+
+  // Escalations: too many open
+  const esOpen=es.filter(r=>(r['Status']||'').toLowerCase()!=='resolved');
+  if(esOpen.length>10){
+    showAlert(`⚠️ ${esOpen.length} escalations open — needs attention`,'yellow','es-open');
+  }
+
+  // Sales: leads stuck 7+ days
+  const now=new Date();
+  const stuck=sl.filter(r=>{
+    const raw=r['Date Assigned']||'';if(!raw||raw==='Not Updated')return false;
+    const dt=new Date(raw.toString());if(isNaN(dt))return false;
+    const days=Math.floor((now-dt)/(1000*60*60*24));
+    const stage=(r['Current Pipeline Stage (Closer)']||r['Current Pipeline Stage (Qualifier)']||'').toLowerCase();
+    return days>=7&&stage!=='closed'&&stage!=='not updated';
+  });
+  if(stuck.length>20){
+    showAlert(`🎯 ${stuck.length} leads stuck 7+ days in pipeline`,'yellow','sl-stuck');
+  }
+}
+
+// ── UI helpers ──
+function sw(dept,el){
+  currentDept=dept;
+  document.querySelectorAll('.dept').forEach(d=>d.classList.remove('active'));
+  document.querySelectorAll('.ni,.tab').forEach(n=>n.classList.remove('active'));
+  const d=document.getElementById('dept-'+dept);
+  if(d)d.classList.add('active');
+  if(el)el.classList.add('active');
+  document.getElementById('pt').textContent=titles[dept]||dept;
+  document.getElementById('ps').textContent=subs[dept]||'';
+  if(dept==='coo')renderCOO(rawData._all||{});
+  else if(rawData[dept])rerender(dept,rawData[dept]);
+}
+
+function mkChart(id,type,labels,datasets,extra){
+  if(charts[id]){charts[id].destroy();}
+  const ctx=document.getElementById(id);if(!ctx)return;
+  charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:type==='doughnut'||type==='pie'?{}:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}}},animation:{duration:500},...(extra||{})}});
+}
+
+function kpi(label,val,delta,cls){return`<div class="kcard"><div class="klabel">${label}</div><div class="kval">${val}</div><span class="kdelta ${cls}">${delta}</span></div>`;}
+
+function pill(s){
+  const sl=(s||'').toLowerCase();
+  if(['resolved','captured','accepted','ended','yes','hired','joined'].some(x=>sl.includes(x)))return`<span class="pill pg">${s}</span>`;
+  if(['in progress','upcoming','missed','shortlisted','offer','interested','connected','callback','call back'].some(x=>sl.includes(x)))return`<span class="pill py">${s}</span>`;
+  if(['failed','cancelled','rejected','no show','junk','dnp','lost','dead'].some(x=>sl.includes(x)))return`<span class="pill pr">${s}</span>`;
+  if(['screening','1st','2nd','final','closed'].some(x=>sl.includes(x)))return`<span class="pill pb">${s}</span>`;
+  return`<span class="pill pp">${s||'—'}</span>`;
+}
+
+function fmtDate(d){
+  if(!d||d==='Not Updated')return'—';
+  const s=d.toString();
+  if(s.includes('GMT')||s.includes('T'))return new Date(s).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+  return s.substring(0,10);
+}
+
+function num(v){return parseFloat(v)||0;}
+
+function makeBars(containerId,data,color){
+  const el=document.getElementById(containerId);if(!el)return;
+  const max=Math.max(...data.map(d=>d.val),1);
+  el.innerHTML=data.slice(0,8).map(d=>`
+    <div class="bar-row">
+      <div class="bar-label" title="${d.label}">${d.label.substring(0,12)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(d.val/max*100)}%;background:${color}"></div></div>
+      <div class="bar-val">${typeof d.val==='number'&&d.val>999?(Math.round(d.val/100)/10)+'K':d.val}</div>
+    </div>`).join('');
+}
+
+// ── Filters ──
+function filterByDate(data,dateField){
+  const from=document.getElementById('f-from').value;
+  const to=document.getElementById('f-to').value;
+  const month=document.getElementById('f-month').value;
+  const search=(document.getElementById('f-search').value||'').toLowerCase().trim();
+  const team=(document.getElementById('f-team').value||'').toLowerCase().trim();
+  const course=(document.getElementById('f-course').value||'').toLowerCase().trim();
+
+  return data.filter(r=>{
+    // Date filter
+    const raw=r[dateField]||'';
+    if(raw&&raw.toString().trim()!==''&&raw!=='Not Updated'){
+      const d=new Date(raw.toString());
+      if(!isNaN(d)){
+        if(from&&d<new Date(from))return false;
+        if(to&&d>new Date(to))return false;
+        if(month){const mn=d.toLocaleString('en',{month:'short'});if(mn!==month)return false;}
+      }
+    }
+    // Search
+    if(search){
+      const allText=Object.values(r).join(' ').toLowerCase();
+      if(!allText.includes(search))return false;
+    }
+    // Team
+    if(team){
+      const tf=[r['Assigned Qualifier'],r['Assigned Closer'],r['Done By'],r['Teacher'],r['Team Manager']].join(' ').toLowerCase();
+      if(!tf.includes(team))return false;
+    }
+    // Course
+    if(course){
+      const cf=[r['Course Enrolled'],r['Course Name'],r['Course'],r['Subject'],r['Course Recommended and Price']].join(' ').toLowerCase();
+      if(!cf.includes(course))return false;
+    }
+    return true;
+  });
+}
+
+function applyFilters(){if(currentDept==='coo')renderCOO(rawData._all||{});else if(rawData[currentDept])rerender(currentDept,rawData[currentDept]);}
+
+function clearFilters(){
+  ['f-search','f-month','f-team','f-course'].forEach(id=>document.getElementById(id).value='');
+  ['f-from','f-to'].forEach(id=>{const el=document.getElementById(id);el.type='text';el.value='';el.type='date';});
+  applyFilters();
+}
+
+function rerender(dept,data){
+  if(dept==='coo'){renderCOO(rawData._all||{});return;}
+  const renderers={razorpay:renderRazorpay,sales:renderSales,students:renderStudents,teachers:renderTeachers,sessions:renderSessions,courses:renderCourses,escalations:renderEscalations,content:renderContent,hr:renderHR};
+  if(renderers[dept])renderers[dept](data);
+}
+
+// ── COO SUMMARY ──
+function renderCOO(allData){
+  const rz=allData.razorpay||[];
+  const sl=allData.sales||[];
+  const st=allData.students||[];
+  const tc=allData.teachers||[];
+  const ss=allData.sessions||[];
+  const es=allData.escalations||[];
+  const ct=allData.content||[];
+  const hr=allData.hr||[];
+
+  const rzCap=rz.filter(r=>r['Status']==='captured');
+  const totalRev=rzCap.reduce((a,r)=>a+num(r['Amount (₹)']),0);
+  const failRate=rz.length?Math.round(rz.filter(r=>r['Status']==='failed').length/rz.length*100):0;
+  const slClosed=sl.filter(r=>num(r['Closed Amount (Rs)'])>0||num(r['Closure Amount (Incl. Tax)'])>0);
+  const slRev=slClosed.reduce((a,r)=>a+num(r['Closed Amount (Rs)']||r['Closure Amount (Incl. Tax)']),0);
+  const slConv=sl.length?Math.round(slClosed.length/sl.length*100):0;
+  const ssDone=ss.filter(r=>(r['Status']||'').toUpperCase()==='ENDED').length;
+  const ssMiss=ss.filter(r=>(r['Status']||'').toUpperCase()==='MISSED').length;
+  const ssRate=ss.length?Math.round(ssDone/ss.length*100):0;
+  const missRate=ss.length?Math.round(ssMiss/ss.length*100):0;
+  const esOpen=es.filter(r=>(r['Status']||'').toLowerCase()!=='resolved').length;
+  const esResRate=es.length?Math.round(es.filter(r=>(r['Status']||'').toLowerCase()==='resolved').length/es.length*100):0;
+  const ctViews=ct.reduce((a,r)=>a+num(r['Views']),0);
+  const ctReach=ct.reduce((a,r)=>a+num(r['Reach']),0);
+  const ctLikes=ct.reduce((a,r)=>a+num(r['Likes']),0);
+  const ctEng=ctReach?((ctLikes/ctReach)*100).toFixed(1):0;
+  const hrHired=hr.filter(r=>(r['Hiring Status']||'').toLowerCase().includes('hired')).length;
+
+  function hCard(icon,label,value,status,reason){
+    const bg={green:'rgba(16,185,129,0.1)',yellow:'rgba(245,158,11,0.1)',red:'rgba(239,68,68,0.1)'};
+    const bc={green:'rgba(16,185,129,0.25)',yellow:'rgba(245,158,11,0.25)',red:'rgba(239,68,68,0.25)'};
+    const dc={green:'#34d399',yellow:'#fbbf24',red:'#f87171'};
+    return`<div class="health-card" style="background:${bg[status]};border-color:${bc[status]}">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+        <span style="width:7px;height:7px;border-radius:50%;background:${dc[status]};flex-shrink:0;display:inline-block"></span>
+        <span style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.5px">${icon} ${label}</span>
+      </div>
+      <div style="color:#f9fafb;font-size:20px;font-weight:500;line-height:1;margin-bottom:3px">${value}</div>
+      <div style="color:#6b7280;font-size:10px">${reason}</div>
+    </div>`;
+  }
+
+  document.getElementById('coo-health').innerHTML=
+    hCard('💳','Payments','₹'+Math.round(totalRev/1000)+'K',failRate>30?'red':failRate>15?'yellow':'green',failRate+'% fail rate')+
+    hCard('🎯','Sales','₹'+Math.round(slRev/1000)+'K',slConv<1?'yellow':slConv<5?'yellow':'green',slConv+'% conversion')+
+    hCard('📅','Sessions',ssRate+'%',missRate>25?'red':missRate>15?'yellow':'green',missRate+'% missed')+
+    hCard('⚠️','Escalations',esOpen+' open',esOpen>15?'red':esOpen>8?'yellow':'green',esResRate+'% resolved')+
+    hCard('📸','Content',ctViews>999?Math.round(ctViews/1000)+'K views':ctViews+' views',parseFloat(ctEng)<1?'yellow':'green',ctEng+'% eng rate')+
+    hCard('👥','HR',hrHired+' hired',hrHired===0?'yellow':'green',hr.length+' in pipeline');
+
+  document.getElementById('coo-kpis').innerHTML=
+    kpi('Revenue','₹'+Math.round(totalRev/1000)+'K','Razorpay','up')+
+    kpi('Sales Rev','₹'+Math.round(slRev/1000)+'K',slClosed.length+' closed','up')+
+    kpi('Total leads',sl.length,slConv+'% conv.','warn')+
+    kpi('Learners',st.length,'enrolled','up')+
+    kpi('Tutors',tc.length,'on platform','info')+
+    kpi('Sessions',ss.length,'total','warn')+
+    kpi('Completed',ssDone,ssRate+'%','up')+
+    kpi('Missed',ssMiss,missRate+'%','dn')+
+    kpi('Escalations',esOpen,'open','dn')+
+    kpi('Content',ct.length,'posts','info')+
+    kpi('Reach',ctReach>999?Math.round(ctReach/1000)+'K':ctReach,'accounts','up')+
+    kpi('Hired',hrHired,'this period','up');
+
+  // Revenue chart
+  const revByDay={};
+  rzCap.forEach(r=>{
+    const raw=r['Created On']||'';if(!raw)return;
+    const dt=new Date(raw.toString());if(isNaN(dt))return;
+    const k=dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    revByDay[k]=(revByDay[k]||0)+num(r['Amount (₹)']);
+  });
+  const days=Object.keys(revByDay).slice(-14);
+  mkChart('cooRevChart','line',days,[{data:days.map(k=>Math.round(revByDay[k]/1000)),borderColor:C.green,backgroundColor:'rgba(52,211,153,0.08)',tension:0.4,fill:true,pointRadius:3,pointBackgroundColor:C.green}],{scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9},callback:v=>v+'K'}}}});
+
+  // Pipeline
+  const stageC={};
+  sl.forEach(r=>{const s=(r['Current Pipeline Stage (Closer)']||r['Current Pipeline Stage (Qualifier)']||'Unknown').toString().trim();if(s&&s!=='Not Updated')stageC[s]=(stageC[s]||0)+1;});
+  const stageE=Object.entries(stageC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  mkChart('cooPipeChart','bar',stageE.map(e=>e[0].substring(0,14)),[{data:stageE.map(e=>e[1]),backgroundColor:'rgba(129,140,248,0.6)',borderRadius:4}]);
+
+  // Sessions donut
+  const scC={};ss.forEach(r=>{const s=r['Status']||'Unknown';scC[s]=(scC[s]||0)+1;});
+  mkChart('cooSessChart','doughnut',Object.keys(scC),[{data:Object.values(scC),backgroundColor:[C.green,C.blue,C.amber,C.red],borderWidth:0}],{cutout:'65%'});
+
+  // Closers
+  const closerC={};sl.forEach(r=>{const c=(r['Assigned Closer']||'').toString().trim();if(c&&c!=='Not Updated')closerC[c]=(closerC[c]||0)+1;});
+  makeBars('coo-closer-bars',Object.entries(closerC).sort((a,b)=>b[1]-a[1]).map(([label,val])=>({label,val})),C.purple);
+
+  // Digest
+  document.getElementById('coo-digest-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+  const now=new Date();
+  const y=new Date(now-86400000);
+  const todayPay=rz.filter(r=>{const d=new Date((r['Created On']||'').toString());return d>=y;});
+  const todayRev=todayPay.filter(r=>r['Status']==='captured').reduce((a,r)=>a+num(r['Amount (₹)']),0);
+
+  function dCard(icon,title,rows){
+    return`<div class="digest-card"><div class="digest-title">${icon} ${title}</div>${rows.map(r=>`<div class="digest-row"><span class="digest-label">${r.l}</span><span class="digest-val" style="color:${r.c||'#f9fafb'}">${r.v}</span></div>`).join('')}</div>`;
+  }
+
+  document.getElementById('coo-digest').innerHTML=
+    dCard('💳','Payments today',[{l:'Transactions',v:todayPay.length},{l:'Revenue',v:'₹'+todayRev.toLocaleString('en-IN'),c:C.green},{l:'Failed',v:todayPay.filter(r=>r['Status']==='failed').length,c:C.amber},{l:'Success rate',v:todayPay.length?Math.round(todayPay.filter(r=>r['Status']==='captured').length/todayPay.length*100)+'%':'—',c:C.green}])+
+    dCard('🎯','Sales pipeline',[{l:'Total leads',v:sl.length},{l:'Closed',v:slClosed.length,c:C.green},{l:'Revenue',v:'₹'+Math.round(slRev/1000)+'K',c:C.green},{l:'Conversion',v:slConv+'%',c:slConv<2?C.red:C.amber}])+
+    dCard('📅','Sessions',[{l:'Total',v:ss.length},{l:'Completed',v:ssDone,c:C.green},{l:'Missed',v:ssMiss,c:ssMiss>20?C.red:C.amber},{l:'Rate',v:ssRate+'%',c:ssRate>80?C.green:C.amber}])+
+    dCard('⚠️','Escalations',[{l:'Total',v:es.length},{l:'Open',v:esOpen,c:esOpen>10?C.red:C.amber},{l:'Resolved',v:es.length-esOpen,c:C.green},{l:'Res. rate',v:esResRate+'%',c:esResRate>80?C.green:C.amber}])+
+    dCard('📸','Content',[{l:'Posts',v:ct.length},{l:'Views',v:ctViews>999?Math.round(ctViews/1000)+'K':ctViews,c:C.purple},{l:'Reach',v:ctReach>999?Math.round(ctReach/1000)+'K':ctReach,c:C.blue},{l:'Eng rate',v:ctEng+'%',c:parseFloat(ctEng)>2?C.green:C.amber}])+
+    dCard('👥','HR',[{l:'Candidates',v:hr.length},{l:'Hired',v:hrHired,c:C.green},{l:'Onboarded',v:hr.filter(r=>(r['Onboarding Form Filled']||'').toLowerCase()==='yes').length,c:C.green},{l:'Conv.',v:hr.length?Math.round(hrHired/hr.length*100)+'%':'0%',c:C.amber}]);
+}
+
+// ── PAYMENTS ──
+function renderRazorpay(data){
+  const d=filterByDate(data,'Created On');
+  const cap=d.filter(r=>r['Status']==='captured');
+  const fail=d.filter(r=>r['Status']==='failed');
+  const auth=d.filter(r=>r['Status']==='authorized');
+  const rev=cap.reduce((a,r)=>a+num(r['Amount (₹)']),0);
+  const avg=cap.length?Math.round(rev/cap.length):0;
+
+  document.getElementById('rz-kpis').innerHTML=
+    kpi('Total',d.length,'transactions','warn')+
+    kpi('Captured',cap.length,Math.round(cap.length/(d.length||1)*100)+'% success','up')+
+    kpi('Revenue','₹'+Math.round(rev/1000)+'K','captured','up')+
+    kpi('Failed',fail.length,Math.round(fail.length/(d.length||1)*100)+'% rate','dn')+
+    kpi('Authorized',auth.length,auth.length>0?'⚠️ action needed':'ok',auth.length>0?'dn':'up')+
+    kpi('Avg ticket','₹'+avg.toLocaleString('en-IN'),'per capture','info');
+
+  if(auth.length>0)showAlert(`💳 ${auth.length} "authorized" payment(s) pending capture!`,'red','rz-auth-live');
+
+  const sc={};d.forEach(r=>{const s=r['Status']||'unknown';sc[s]=(sc[s]||0)+1;});
+  mkChart('rzStatusChart','doughnut',Object.keys(sc),[{data:Object.values(sc),backgroundColor:[C.green,C.red,C.amber,C.blue],borderWidth:0}],{cutout:'65%'});
+
+  const byDay={};
+  d.filter(r=>r['Status']==='captured').forEach(r=>{
+    const raw=r['Created On']||'';if(!raw)return;
+    const dt=new Date(raw.toString());if(isNaN(dt))return;
+    const k=dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    byDay[k]=(byDay[k]||0)+num(r['Amount (₹)']);
+  });
+  const days=Object.keys(byDay).slice(-14);
+  mkChart('rzTrendChart','bar',days,[{data:days.map(k=>Math.round(byDay[k]/1000)),backgroundColor:'rgba(129,140,248,0.5)',borderRadius:3}],{scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9},callback:v=>v+'K'}}}});
+
+  window._rzData=d;rzToggle('weekly');
+
+  const mc={};d.forEach(r=>{const m=r['Method']||'unknown';mc[m]=(mc[m]||0)+1;});
+  mkChart('rzMethodChart','doughnut',Object.keys(mc),[{data:Object.values(mc),backgroundColor:[C.blue,C.purple,C.teal,C.amber],borderWidth:0}],{cutout:'55%'});
+
+  document.getElementById('rz-count').textContent=d.length+' records';
+  document.getElementById('rz-table').innerHTML=d.slice(0,30).map(r=>`<tr>
+    <td>${(r['Customer Detail']||'').split('|')[0].trim()||'—'}</td>
+    <td>₹${num(r['Amount (₹)']).toLocaleString('en-IN')}</td>
+    <td>${fmtDate(r['Created On'])}</td>
+    <td>${pill(r['Status'])}</td></tr>`).join('');
+}
+
+function rzToggle(mode){
+  const d=window._rzData||[];
+  document.getElementById('rz-weekly-btn').style.opacity=mode==='weekly'?'1':'0.5';
+  document.getElementById('rz-monthly-btn').style.opacity=mode==='monthly'?'1':'0.5';
+  const grouped={};
+  d.filter(r=>r['Status']==='captured').forEach(r=>{
+    const raw=r['Created On']||'';if(!raw)return;
+    const dt=new Date(raw.toString());if(isNaN(dt))return;
+    let key;
+    if(mode==='weekly'){const wk=Math.ceil(dt.getDate()/7);key=dt.toLocaleString('en',{month:'short'})+' W'+wk;}
+    else{key=dt.toLocaleString('en',{month:'short',year:'2-digit'});}
+    grouped[key]=(grouped[key]||0)+num(r['Amount (₹)']);
+  });
+  const labels=Object.keys(grouped);
+  mkChart('rzToggleChart','bar',labels,[{data:labels.map(k=>Math.round(grouped[k]/1000)),backgroundColor:'rgba(52,211,153,0.5)',borderRadius:4}],{scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10},callback:v=>v+'K'}}}});
+}
+
+// ── SALES ──
+function renderSales(data){
+  const d=filterByDate(data,'Date Assigned');
+  const closed=d.filter(r=>num(r['Closed Amount (Rs)'])>0||num(r['Closure Amount (Incl. Tax)'])>0);
+  const totalRev=closed.reduce((a,r)=>a+num(r['Closed Amount (Rs)']||r['Closure Amount (Incl. Tax)']),0);
+  const partPay=d.filter(r=>(r['Part payment (Y/N)']||'').toString().toLowerCase()==='y').length;
+  const onboarded=d.filter(r=>(r['Onboarding Form Filled']||'').toString().toLowerCase()==='yes').length;
+  const convRate=d.length?Math.round(closed.length/d.length*100):0;
+
+  document.getElementById('sl-kpis').innerHTML=
+    kpi('Total leads',d.length,'in CRM','warn')+
+    kpi('Closed',closed.length,convRate+'% conv.','up')+
+    kpi('Revenue','₹'+Math.round(totalRev/1000)+'K','closed','up')+
+    kpi('Avg ticket','₹'+(closed.length?Math.round(totalRev/closed.length).toLocaleString('en-IN'):'0'),'per closure','info')+
+    kpi('Part payment',partPay,'leads','warn')+
+    kpi('Onboarded',onboarded,'form filled','up');
+
+  // Pipeline
+  const stageC={};
+  d.forEach(r=>{const s=(r['Current Pipeline Stage (Closer)']||r['Current Pipeline Stage (Qualifier)']||'Unknown').toString().trim();if(s&&s!=='Not Updated')stageC[s]=(stageC[s]||0)+1;else stageC['Unknown']=(stageC['Unknown']||0)+1;});
+  const stageE=Object.entries(stageC).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  mkChart('slPipelineChart','bar',stageE.map(e=>e[0].substring(0,16)),[{data:stageE.map(e=>e[1]),backgroundColor:'rgba(129,140,248,0.6)',borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,0)'},ticks:{color:'#9ca3af',font:{size:10}}}}});
+
+  // Revenue by date
+  const revByDate={};
+  closed.forEach(r=>{
+    const raw=r['Close Date']||'';if(!raw||raw==='Not Updated')return;
+    const dt=new Date(raw.toString());if(isNaN(dt))return;
+    const k=dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    revByDate[k]=(revByDate[k]||0)+num(r['Closed Amount (Rs)']||r['Closure Amount (Incl. Tax)']);
+  });
+  const revDates=Object.keys(revByDate).slice(-14);
+  mkChart('slRevenueChart','bar',revDates,[{data:revDates.map(k=>Math.round(revByDate[k]/1000)),backgroundColor:'rgba(52,211,153,0.5)',borderRadius:3}],{scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9},callback:v=>v+'K'}}}});
+
+  // Funnel
+  const connected=d.filter(r=>{const s=(r['Current Pipeline Stage (Qualifier)']||'').toLowerCase();return s&&s!=='unknown'&&s!=='not updated'&&s!=='not filled'&&s!=='';}).length;
+  const handedOff=d.filter(r=>(r['Assigned Closer']||'').toString().trim()!==''&&(r['Assigned Closer']||'').toString().trim()!=='Not Updated').length;
+  mkChart('slFunnelChart','bar',['Leads assigned','Qualifier touched','Handed to closer','Closed'],[{data:[d.length,connected,handedOff,closed.length],backgroundColor:['rgba(129,140,248,0.7)','rgba(96,165,250,0.6)','rgba(45,212,191,0.6)','rgba(52,211,153,0.8)'],borderRadius:6}],{scales:{x:{grid:{color:DARK},ticks:{color:'#9ca3af',font:{size:11}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}}}});
+
+  // Source
+  const srcC={};d.forEach(r=>{const s=(r['Lead Source']||'Unknown').toString().trim()||'Unknown';srcC[s]=(srcC[s]||0)+1;});
+  const srcE=Object.entries(srcC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  mkChart('slSourceChart','doughnut',srcE.map(e=>e[0].substring(0,14)),[{data:srcE.map(e=>e[1]),backgroundColor:[C.purple,C.blue,C.green,C.amber,C.pink,C.teal],borderWidth:0}],{cutout:'55%'});
+
+  // Course enrolled
+  const courseC={};closed.forEach(r=>{const c=(r['Course Enrolled']||'').toString().trim();if(c&&c!=='Not Updated')courseC[c]=(courseC[c]||0)+1;});
+  const courseE=Object.entries(courseC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  mkChart('slCourseChart','doughnut',courseE.length?courseE.map(e=>e[0].substring(0,14)):['No data'],[{data:courseE.length?courseE.map(e=>e[1]):[1],backgroundColor:[C.green,C.purple,C.amber,C.blue,C.pink,C.teal],borderWidth:0}],{cutout:'55%'});
+
+  // Closers
+  const closerC={};d.forEach(r=>{const c=(r['Assigned Closer']||'').toString().trim();if(c&&c!=='Not Updated')closerC[c]=(closerC[c]||0)+1;});
+  makeBars('sl-closer-bars',Object.entries(closerC).sort((a,b)=>b[1]-a[1]).map(([label,val])=>({label,val})),C.green);
+
+  // Rating
+  const ratingC={};d.forEach(r=>{const rt=(r['Lead Rating (Q)']||'Unrated').toString().trim()||'Unrated';ratingC[rt]=(ratingC[rt]||0)+1;});
+  const ratingE=Object.entries(ratingC).sort((a,b)=>b[1]-a[1]);
+  mkChart('slRatingChart','doughnut',ratingE.map(e=>e[0]),[{data:ratingE.map(e=>e[1]),backgroundColor:[C.green,C.amber,C.red,C.blue,C.purple],borderWidth:0}],{cutout:'55%'});
+
+  // City
+  const cityC={};d.forEach(r=>{const c=(r['City']||'').toString().trim();if(c&&c!=='Not Updated')cityC[c]=(cityC[c]||0)+1;});
+  makeBars('sl-city-bars',Object.entries(cityC).sort((a,b)=>b[1]-a[1]).map(([label,val])=>({label,val})),C.blue);
+
+  // ── Intelligence charts ──
+  const profC={};d.forEach(r=>{const v=(r['Profession']||'Not Updated').toString().trim()||'Not Updated';profC[v]=(profC[v]||0)+1;});
+  const profE=Object.entries(profC).filter(e=>e[0]!=='Not Updated').sort((a,b)=>b[1]-a[1]).slice(0,8);
+  mkChart('slProfessionChart','bar',profE.length?profE.map(e=>e[0].substring(0,16)):['No data'],[{data:profE.length?profE.map(e=>e[1]):[0],backgroundColor:'rgba(129,140,248,0.6)',borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,0)'},ticks:{color:'#9ca3af',font:{size:10}}}}});
+
+  const indC={};d.forEach(r=>{const v=(r['Industry']||'Not Updated').toString().trim()||'Not Updated';indC[v]=(indC[v]||0)+1;});
+  const indE=Object.entries(indC).filter(e=>e[0]!=='Not Updated').sort((a,b)=>b[1]-a[1]).slice(0,8);
+  mkChart('slIndustryChart','bar',indE.length?indE.map(e=>e[0].substring(0,16)):['No data'],[{data:indE.length?indE.map(e=>e[1]):[0],backgroundColor:'rgba(45,212,191,0.6)',borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,0)'},ticks:{color:'#9ca3af',font:{size:10}}}}});
+
+  const purpC={};d.forEach(r=>{const v=(r['Purpose of Upskilling']||'Not Updated').toString().trim()||'Not Updated';if(v!=='Not Updated')purpC[v]=(purpC[v]||0)+1;});
+  const purpE=Object.entries(purpC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  mkChart('slPurposeChart','doughnut',purpE.length?purpE.map(e=>e[0].substring(0,14)):['No data'],[{data:purpE.length?purpE.map(e=>e[1]):[1],backgroundColor:[C.purple,C.blue,C.green,C.amber,C.pink,C.teal],borderWidth:0}],{cutout:'55%'});
+
+  const painC={};d.forEach(r=>{const v=(r['Specific Pain Point']||'Not Updated').toString().trim()||'Not Updated';if(v!=='Not Updated')painC[v]=(painC[v]||0)+1;});
+  const painE=Object.entries(painC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  mkChart('slPainChart','doughnut',painE.length?painE.map(e=>e[0].substring(0,14)):['No data'],[{data:painE.length?painE.map(e=>e[1]):[1],backgroundColor:[C.red,C.orange,C.amber,C.pink,C.purple,C.blue],borderWidth:0}],{cutout:'55%'});
+
+  const lsC={};d.forEach(r=>{const v=(r['Professional Life Stage']||'Not Updated').toString().trim()||'Not Updated';if(v!=='Not Updated')lsC[v]=(lsC[v]||0)+1;});
+  const lsE=Object.entries(lsC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  mkChart('slLifeStageChart','doughnut',lsE.length?lsE.map(e=>e[0].substring(0,14)):['No data'],[{data:lsE.length?lsE.map(e=>e[1]):[1],backgroundColor:[C.teal,C.green,C.blue,C.purple,C.amber,C.pink],borderWidth:0}],{cutout:'55%'});
+
+  // Levers
+  const levAll={};
+  d.forEach(r=>{
+    ['Lever 1 Deployed','Lever 2 Deployed','Lever 3 Deployed'].forEach(lk=>{
+      const v=(r[lk]||'').toString().trim();
+      if(v&&v!=='Not Updated'&&v!=='Not Used')levAll[v]=(levAll[v]||0)+1;
+    });
+  });
+  const levE=Object.entries(levAll).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  mkChart('slLeverChart','bar',levE.length?levE.map(e=>e[0].substring(0,16)):['No data'],[{data:levE.length?levE.map(e=>e[1]):[0],backgroundColor:'rgba(251,191,36,0.6)',borderRadius:4}],{indexAxis:'y',scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}},y:{grid:{color:'rgba(0,0,0,0)'},ticks:{color:'#9ca3af',font:{size:10}}}}});
+
+  // State
+  const stateC={};d.forEach(r=>{const v=(r['State']||'').toString().trim();if(v&&v!=='Not Updated')stateC[v]=(stateC[v]||0)+1;});
+  makeBars('sl-state-bars',Object.entries(stateC).sort((a,b)=>b[1]-a[1]).map(([label,val])=>({label,val})),C.blue);
+
+  // Prev coach
+  const coachC={};d.forEach(r=>{const v=(r['Name of Previous Coach/Platform']||'').toString().trim();if(v&&v!=='Not Updated')coachC[v]=(coachC[v]||0)+1;});
+  const coachE=Object.entries(coachC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(coachE.length)mkChart('slPrevCoachChart','doughnut',coachE.map(e=>e[0].substring(0,14)),[{data:coachE.map(e=>e[1]),backgroundColor:[C.purple,C.blue,C.teal,C.green,C.amber,C.pink],borderWidth:0}],{cutout:'55%'});
+
+  // Personal context
+  const pctxC={};d.forEach(r=>{const v=(r['Personal Life Context']||'').toString().trim();if(v&&v!=='Not Updated')pctxC[v]=(pctxC[v]||0)+1;});
+  const pctxE=Object.entries(pctxC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(pctxE.length)mkChart('slPersonalCtxChart','doughnut',pctxE.map(e=>e[0].substring(0,14)),[{data:pctxE.map(e=>e[1]),backgroundColor:[C.pink,C.purple,C.blue,C.teal,C.green,C.amber],borderWidth:0}],{cutout:'55%'});
+
+  // Qualifier performance
+  const qualPerf={};const qualTotal={};
+  d.forEach(r=>{
+    const q=(r['Assigned Qualifier']||'').toString().trim();if(!q||q==='Not Updated')return;
+    qualTotal[q]=(qualTotal[q]||0)+1;
+    if(num(r['Closed Amount (Rs)'])>0||num(r['Closure Amount (Incl. Tax)'])>0)qualPerf[q]=(qualPerf[q]||0)+1;
+  });
+  makeBars('sl-qualifier-bars',Object.entries(qualTotal).map(([name,total])=>({label:name,val:total?Math.round((qualPerf[name]||0)/total*100):0})).sort((a,b)=>b.val-a.val),C.teal);
+
+  // Lead aging
+  const now7=new Date();
+  const aged=d.filter(r=>{
+    const raw=r['Date Assigned']||'';if(!raw||raw==='Not Updated')return false;
+    const dt=new Date(raw.toString());if(isNaN(dt))return false;
+    const days=Math.floor((now7-dt)/(1000*60*60*24));
+    const stage=(r['Current Pipeline Stage (Closer)']||r['Current Pipeline Stage (Qualifier)']||'').toLowerCase();
+    return days>=7&&stage!=='closed'&&stage!=='not updated';
+  }).map(r=>{
+    const dt=new Date((r['Date Assigned']||'').toString());
+    return{...r,_days:Math.floor((now7-dt)/(1000*60*60*24))};
+  }).sort((a,b)=>b._days-a._days);
+  document.getElementById('sl-aging-count').textContent=aged.length+' stuck';
+  document.getElementById('sl-aging-table').innerHTML=aged.slice(0,10).map(r=>`<tr>
+    <td>${r['Lead Name']||'—'}</td>
+    <td>${(r['Current Pipeline Stage (Closer)']||r['Current Pipeline Stage (Qualifier)']||'—').toString().substring(0,18)}</td>
+    <td style="color:${r._days>14?'#f87171':'#fbbf24'}">${r._days}d</td></tr>`).join('');
+
+  // Lost deals
+  const lostC={};
+  d.forEach(r=>{
+    const s=(r['Current Pipeline Stage (Closer)']||r['Current Pipeline Stage (Qualifier)']||'').toString().trim().toLowerCase();
+    if(s.includes('junk')||s.includes('dnp')||s.includes('not interest')||s.includes('lost')||s.includes('dead')){
+      const key=s.charAt(0).toUpperCase()+s.slice(1);
+      lostC[key]=(lostC[key]||0)+1;
+    }
+  });
+  const lostE=Object.entries(lostC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(lostE.length)mkChart('slLostChart','doughnut',lostE.map(e=>e[0].substring(0,14)),[{data:lostE.map(e=>e[1]),backgroundColor:[C.red,C.amber,C.orange,C.pink,C.purple,C.blue],borderWidth:0}],{cutout:'55%'});
+
+  document.getElementById('sl-count').textContent=d.length+' leads';
+  document.getElementById('sl-table').innerHTML=d.slice(0,60).map(r=>`<tr>
+    <td>${r['Lead Name']||'—'}</td>
+    <td>${(r['City']||'').toString().trim()||'—'}</td>
+    <td>${(r['Lead Source']||'').toString().trim()||'—'}</td>
+    <td>${(r['Profession']||'').toString().trim()||'—'}</td>
+    <td>${(r['Assigned Qualifier']||'').toString().trim()||'—'}</td>
+    <td>${(r['Assigned Closer']||'').toString().trim()||'—'}</td>
+    <td>${pill((r['Current Pipeline Stage (Closer)']||r['Current Pipeline Stage (Qualifier)']||'').toString().trim())}</td>
+    <td>${num(r['Closed Amount (Rs)']||r['Closure Amount (Incl. Tax)'])>0?'₹'+num(r['Closed Amount (Rs)']||r['Closure Amount (Incl. Tax)']).toLocaleString('en-IN'):'—'}</td>
+    <td>${(r['Course Enrolled']||'').toString().trim()||'—'}</td>
+    <td>${r['Lead Rating (Q)']||'—'}</td></tr>`).join('');
+}
+
+// ── LEARNERS ──
+function renderStudents(data){
+  const d=filterByDate(data,'Joined On');
+  const sub={};d.forEach(r=>{const c=r['Subject']||'Other';sub[c]=(sub[c]||0)+1;});
+  const top=Object.entries(sub).sort((a,b)=>b[1]-a[1]);
+  const byMonth={};
+  d.forEach(r=>{
+    const raw=r['Joined On']||'';if(!raw)return;
+    const dt=new Date(raw.toString());if(isNaN(dt))return;
+    const k=dt.toLocaleString('en',{month:'short',year:'2-digit'});
+    byMonth[k]=(byMonth[k]||0)+1;
+  });
+  document.getElementById('st-kpis').innerHTML=
+    kpi('Total',d.length,'learners','up')+
+    kpi('Active',d.filter(r=>r['Status']==='ACCEPTED').length,'accepted','up')+
+    kpi('Subjects',Object.keys(sub).length,'unique','info')+
+    kpi('Top subject',top[0]?top[0][1]:'—',top[0]?top[0][0].substring(0,14):'','warn');
+
+  const t8=top.slice(0,8);
+  mkChart('stSubjectChart','doughnut',t8.map(e=>e[0].substring(0,14)),[{data:t8.map(e=>e[1]),backgroundColor:[C.purple,C.green,C.amber,C.blue,C.pink,C.teal,C.orange,C.red],borderWidth:0}],{cutout:'60%'});
+  const months=Object.keys(byMonth);
+  mkChart('stMonthChart','bar',months,[{data:months.map(k=>byMonth[k]),backgroundColor:'rgba(52,211,153,0.5)',borderRadius:3}]);
+
+  // Cohort
+  const cohort={};d.forEach(r=>{const raw=r['Joined On']||'';if(!raw)return;const dt=new Date(raw.toString());if(isNaN(dt))return;const k=dt.toLocaleString('en',{month:'short',year:'2-digit'});cohort[k]=(cohort[k]||0)+1;});
+  const cLabels=Object.keys(cohort);const cVals=cLabels.map(k=>cohort[k]);const maxV=Math.max(...cVals,1);
+  mkChart('stCohortChart','bar',cLabels,[{data:cVals,backgroundColor:cVals.map(v=>{const p=v/maxV;return p>0.7?'rgba(52,211,153,0.6)':p>0.4?'rgba(251,191,36,0.6)':'rgba(248,113,113,0.6)';}),borderRadius:4}]);
+
+  document.getElementById('st-count').textContent=d.length+' learners';
+  document.getElementById('st-table').innerHTML=d.slice(0,40).map(r=>`<tr>
+    <td>${r['Name']||'—'}</td><td>${r['Email']||'—'}</td><td>${r['Course']||'—'}</td><td>${r['Subject']||'—'}</td><td>${fmtDate(r['Joined On'])}</td></tr>`).join('');
+}
+
+// ── TUTORS ──
+function renderTeachers(data){
+  const d=filterByDate(data,'Joined On');
+  const acc=d.filter(r=>r['Status']==='ACCEPTED').length;
+  const byMonth={};d.forEach(r=>{const raw=r['Joined On']||'';if(!raw)return;const dt=new Date(raw.toString());if(isNaN(dt))return;const k=dt.toLocaleString('en',{month:'short',year:'2-digit'});byMonth[k]=(byMonth[k]||0)+1;});
+  document.getElementById('tc-kpis').innerHTML=
+    kpi('Total',d.length,'tutors','up')+kpi('Active',acc,'accepted','up')+kpi('Inactive',d.length-acc,'others','warn')+kpi('Rate',Math.round(acc/(d.length||1)*100)+'%','active','info');
+  const months=Object.keys(byMonth);
+  mkChart('tcMonthChart','bar',months,[{data:months.map(k=>byMonth[k]),backgroundColor:'rgba(129,140,248,0.5)',borderRadius:3}]);
+  mkChart('tcStatusChart','doughnut',['Active','Inactive'],[{data:[acc,d.length-acc],backgroundColor:[C.green,C.red],borderWidth:0}],{cutout:'65%'});
+  document.getElementById('tc-count').textContent=d.length+' tutors';
+  document.getElementById('tc-table').innerHTML=d.slice(0,60).map(r=>`<tr>
+    <td>${r['Name']||'—'}</td><td>${r['Email']||'—'}</td><td>${r['Phone']||'—'}</td><td>${fmtDate(r['Joined On'])}</td><td>${pill(r['Status'])}</td></tr>`).join('');
+}
+
+// ── SESSIONS ──
+function renderSessions(data){
+  const d=filterByDate(data,'Start Time');
+  const ended=d.filter(r=>(r['Status']||'').toUpperCase()==='ENDED').length;
+  const missed=d.filter(r=>(r['Status']||'').toUpperCase()==='MISSED').length;
+  const cancelled=d.filter(r=>(r['Status']||'').toUpperCase()==='CANCELLED').length;
+  const attended=d.filter(r=>r['Attendance Recorded']==='Yes').length;
+  document.getElementById('ss-kpis').innerHTML=
+    kpi('Total',d.length,'sessions','warn')+kpi('Completed',ended,Math.round(ended/(d.length||1)*100)+'%','up')+kpi('Missed',missed,Math.round(missed/(d.length||1)*100)+'%','dn')+kpi('Cancelled',cancelled,'sessions','dn')+kpi('Attendance',Math.round(attended/(d.length||1)*100)+'%','recorded','info');
+
+  const sc={};d.forEach(r=>{const s=r['Status']||'Unknown';sc[s]=(sc[s]||0)+1;});
+  mkChart('ssStatusChart','doughnut',Object.keys(sc),[{data:Object.values(sc),backgroundColor:[C.green,C.blue,C.amber,C.red],borderWidth:0}],{cutout:'65%'});
+
+  const hourC={};d.forEach(r=>{const raw=r['Start Time']||'';if(!raw)return;const dt=new Date(raw.toString());if(isNaN(dt))return;const h=dt.getHours();hourC[h]=(hourC[h]||0)+1;});
+  const hours=Array.from({length:24},(_,i)=>i).filter(h=>hourC[h]);
+  mkChart('ssHourChart','bar',hours.map(h=>h+':00'),[{data:hours.map(h=>hourC[h]),backgroundColor:'rgba(45,212,191,0.5)',borderRadius:3}]);
+
+  // Completion rate over time
+  const weekComp={};const weekTotal={};
+  d.forEach(r=>{const raw=r['Start Time']||'';if(!raw)return;const dt=new Date(raw.toString());if(isNaN(dt))return;const wk=dt.toLocaleString('en',{month:'short'})+' W'+Math.ceil(dt.getDate()/7);weekTotal[wk]=(weekTotal[wk]||0)+1;if((r['Status']||'').toUpperCase()==='ENDED')weekComp[wk]=(weekComp[wk]||0)+1;});
+  const wkLabels=Object.keys(weekTotal);const compRates=wkLabels.map(k=>weekTotal[k]?Math.round((weekComp[k]||0)/weekTotal[k]*100):0);
+  mkChart('ssCompletionChart','line',wkLabels,[{data:compRates,borderColor:C.teal,backgroundColor:'rgba(45,212,191,0.08)',tension:0.4,fill:true,pointBackgroundColor:compRates.map(v=>v>=80?C.green:v>=60?C.amber:C.red),pointRadius:5}],{scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10},callback:v=>v+'%'},min:0,max:100}}});
+
+  // Missed by tutor
+  const tutorMiss={};d.filter(r=>(r['Status']||'').toUpperCase()==='MISSED').forEach(r=>{const t=(r['Teacher']||'Unknown').toString().trim();tutorMiss[t]=(tutorMiss[t]||0)+1;});
+  const missTotal=Object.values(tutorMiss).reduce((a,b)=>a+b,0);
+  document.getElementById('ss-missed-badge').textContent=missTotal+' missed';
+  makeBars('ss-missed-bars',Object.entries(tutorMiss).sort((a,b)=>b[1]-a[1]).map(([label,val])=>({label,val})),C.red);
+
+  // Heatmap
+  const hourDone={};d.forEach(r=>{const raw=r['Start Time']||'';if(!raw)return;const dt=new Date(raw.toString());if(isNaN(dt))return;const h=dt.getHours();if(!hourC[h])return;if((r['Status']||'').toUpperCase()==='ENDED')hourDone[h]=(hourDone[h]||0)+1;});
+  mkChart('ssHeatChart','bar',hours.map(h=>h+':00'),[{data:hours.map(h=>hourC[h]),backgroundColor:hours.map(h=>{const rate=hourC[h]?(hourDone[h]||0)/hourC[h]:0;return rate>=0.8?'rgba(52,211,153,0.7)':rate>=0.6?'rgba(251,191,36,0.7)':'rgba(248,113,113,0.7)';}),borderRadius:3}]);
+  mkChart('ssAttendChart','doughnut',['Attended','Not recorded'],[{data:[attended,d.length-attended],backgroundColor:[C.green,C.red],borderWidth:0}],{cutout:'60%'});
+
+  const tutorC={};d.forEach(r=>{const t=r['Teacher']||'Unknown';tutorC[t]=(tutorC[t]||0)+1;});
+  makeBars('ss-tutor-bars',Object.entries(tutorC).sort((a,b)=>b[1]-a[1]).map(([label,val])=>({label,val})),C.purple);
+
+  document.getElementById('ss-count').textContent=d.length+' sessions';
+  document.getElementById('ss-table').innerHTML=d.slice(0,30).map(r=>`<tr>
+    <td>${r['Title']||'—'}</td><td>${r['Teacher']||'—'}</td><td>${r['Course']||'—'}</td><td>${fmtDate(r['Start Time'])}</td><td>${pill(r['Status'])}</td></tr>`).join('');
+}
+
+// ── COURSES ──
+function renderCourses(data){
+  const d=filterByDate(data,'Created On');
+  const active=d.filter(r=>r['Status']==='Active').length;
+  const sub={};d.forEach(r=>{const s=r['Subject']||'Other';if(s)sub[s]=(sub[s]||0)+1;});
+  const byMonth={};d.forEach(r=>{const raw=r['Created On']||'';if(!raw)return;const dt=new Date(raw.toString());if(isNaN(dt))return;const k=dt.toLocaleString('en',{month:'short'});byMonth[k]=(byMonth[k]||0)+1;});
+  document.getElementById('co-kpis').innerHTML=
+    kpi('Total',d.length,'courses','up')+kpi('Active',active,'visible','up')+kpi('Hidden',d.length-active,'not visible','warn')+kpi('Subjects',Object.keys(sub).length,'categories','info');
+  const t8=Object.entries(sub).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  mkChart('coSubjectChart','doughnut',t8.map(e=>e[0].substring(0,12)),[{data:t8.map(e=>e[1]),backgroundColor:[C.purple,C.green,C.amber,C.blue,C.pink,C.teal,C.orange,C.red],borderWidth:0}],{cutout:'60%'});
+  const months=Object.keys(byMonth);
+  mkChart('coMonthChart','bar',months,[{data:months.map(k=>byMonth[k]),backgroundColor:'rgba(251,191,36,0.5)',borderRadius:3}]);
+  document.getElementById('co-count').textContent=d.length+' courses';
+  document.getElementById('co-table').innerHTML=d.slice(0,40).map(r=>`<tr>
+    <td>${r['Course Name']||'—'}</td><td>${r['Subject']||'—'}</td><td>${r['Students Enrolled']||0}</td><td>${fmtDate(r['Created On'])}</td></tr>`).join('');
+}
+
+// ── ESCALATIONS ──
+function renderEscalations(data){
+  const d=filterByDate(data,'Date');
+  const resolved=d.filter(r=>(r['Status']||'').toLowerCase()==='resolved').length;
+  const inprog=d.filter(r=>(r['Status']||'').toLowerCase()==='in progress').length;
+  const open=d.filter(r=>!r['Status']).length;
+  document.getElementById('es-kpis').innerHTML=
+    kpi('Total',d.length,'escalations','warn')+kpi('Resolved',resolved,Math.round(resolved/(d.length||1)*100)+'%','up')+kpi('In progress',inprog,'active','warn')+kpi('Pending',open,'no status',open>5?'dn':'warn')+kpi('Res. rate',Math.round(resolved/(d.length||1)*100)+'%','target 100%','info');
+  mkChart('esStatusChart','doughnut',['Resolved','In Progress','Pending'],[{data:[resolved,inprog,open],backgroundColor:[C.green,C.amber,C.red],borderWidth:0}],{cutout:'65%'});
+  const typeC={};d.forEach(r=>{const s=r['Escalation Summary']||'';let t='Other';if(s.toLowerCase().includes('tutor change'))t='Tutor Change';else if(s.toLowerCase().includes('refund'))t='Refund';else if(s.toLowerCase().includes('timing')||s.toLowerCase().includes('schedule'))t='Timing';else if(s.toLowerCase().includes('not attend'))t='Attendance';else if(s.toLowerCase().includes('resign'))t='Tutor Resigned';typeC[t]=(typeC[t]||0)+1;});
+  mkChart('esTypeChart','bar',Object.keys(typeC),[{data:Object.values(typeC),backgroundColor:'rgba(248,113,113,0.5)',borderRadius:3}],{indexAxis:'y'});
+  const openE=d.filter(r=>(r['Status']||'').toLowerCase()!=='resolved');
+  document.getElementById('es-count').textContent=openE.length+' open';
+  document.getElementById('es-table').innerHTML=openE.slice(0,30).map(r=>`<tr>
+    <td>${r['Learner Name']||'—'}</td><td>${r['Course']||'—'}</td><td>${r['Existing Tutor']||'—'}</td><td>${(r['Escalation Summary']||r['Updates']||'—').toString().substring(0,45)}</td><td>${pill(r['Status'])}</td></tr>`).join('');
+}
+
+// ── CONTENT ──
+function renderContent(data){
+  const d=filterByDate(data,'Date');
+  const totalViews=d.reduce((a,r)=>a+num(r['Views']),0);
+  const totalReach=d.reduce((a,r)=>a+num(r['Reach']),0);
+  const totalLikes=d.reduce((a,r)=>a+num(r['Likes']),0);
+  const totalShares=d.reduce((a,r)=>a+num(r['Shares']),0);
+  const totalSaves=d.reduce((a,r)=>a+num(r['Saves']),0);
+  const totalFollows=d.reduce((a,r)=>a+num(r['Follows']),0);
+  const engRate=totalReach?((totalLikes+totalShares+totalSaves)/totalReach*100).toFixed(2):0;
+  document.getElementById('ct-kpis').innerHTML=
+    kpi('Posts',d.length,'published','up')+kpi('Views',totalViews>999?Math.round(totalViews/1000)+'K':totalViews,'total','up')+kpi('Reach',totalReach>999?Math.round(totalReach/1000)+'K':totalReach,'accounts','up')+kpi('Likes',totalLikes>999?Math.round(totalLikes/1000)+'K':totalLikes,'total','info')+kpi('Eng rate',engRate+'%','l+s+s/reach','warn')+kpi('Follows',totalFollows,'gained','up');
+
+  const last20=[...d].sort((a,b)=>new Date((a['Date']||'').toString())-new Date((b['Date']||'').toString())).slice(-20);
+  mkChart('ctTrendChart','line',last20.map(r=>fmtDate(r['Date'])),[
+    {label:'Views',data:last20.map(r=>num(r['Views'])),borderColor:C.purple,backgroundColor:'rgba(129,140,248,0.08)',tension:0.4,fill:true,pointRadius:3,pointBackgroundColor:C.purple},
+    {label:'Reach',data:last20.map(r=>num(r['Reach'])),borderColor:C.teal,backgroundColor:'rgba(45,212,191,0.05)',tension:0.4,fill:true,pointRadius:3,pointBackgroundColor:C.teal}
+  ],{plugins:{legend:{display:true,labels:{color:'#9ca3af',font:{size:10},boxWidth:10}}}});
+  mkChart('ctEngageChart','bar',['Likes','Shares','Comments','Saves','Follows'],[{data:[totalLikes,totalShares,d.reduce((a,r)=>a+num(r['Comments']),0),totalSaves,totalFollows],backgroundColor:[C.purple,C.blue,C.amber,C.green,C.pink],borderRadius:4}]);
+
+  // Eng rate trend
+  const sorted20=[...d].sort((a,b)=>new Date((a['Date']||'').toString())-new Date((b['Date']||'').toString())).slice(-20);
+  const engRates=sorted20.map(r=>{const reach=num(r['Reach']);const eng=num(r['Likes'])+num(r['Shares'])+num(r['Saves']);return reach?(eng/reach*100).toFixed(2):0;});
+  mkChart('ctEngTrendChart','line',sorted20.map(r=>fmtDate(r['Date'])),[{data:engRates,borderColor:C.pink,backgroundColor:'rgba(244,114,182,0.08)',tension:0.4,fill:true,pointBackgroundColor:engRates.map(v=>parseFloat(v)>=3?C.green:parseFloat(v)>=1?C.amber:C.red),pointRadius:5}],{scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:10},callback:v=>v+'%'}}}});
+
+  const typeC={};d.forEach(r=>{const t=r['Content Type']||r['Post type']||'Other';typeC[t]=(typeC[t]||0)+1;});
+  mkChart('ctTypeChart','doughnut',Object.keys(typeC),[{data:Object.values(typeC),backgroundColor:[C.purple,C.blue,C.green,C.amber],borderWidth:0}],{cutout:'55%'});
+
+  const days7=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayViews={};const dayCount={};
+  d.forEach(r=>{const raw=r['Date']||'';if(!raw)return;const dt=new Date(raw.toString());if(isNaN(dt))return;const day=days7[dt.getDay()];dayViews[day]=(dayViews[day]||0)+num(r['Views']);dayCount[day]=(dayCount[day]||0)+1;});
+  const dayAvg=days7.map(day=>dayCount[day]?Math.round(dayViews[day]/dayCount[day]):0);
+  mkChart('ctDayChart','bar',days7,[{data:dayAvg,backgroundColor:dayAvg.map(v=>{const max=Math.max(...dayAvg,1);return v===max?'rgba(244,114,182,0.8)':'rgba(244,114,182,0.35)';}),borderRadius:4}]);
+
+  const followByDate=[...d].sort((a,b)=>new Date((a['Date']||'').toString())-new Date((b['Date']||'').toString()));
+  let cumFollow=0;const followLabels=[];const followVals=[];
+  followByDate.forEach(r=>{if(!r['Date'])return;cumFollow+=num(r['Follows']);followLabels.push(fmtDate(r['Date']));followVals.push(cumFollow);});
+  mkChart('ctFollowChart','line',followLabels,[{data:followVals,borderColor:C.purple,backgroundColor:'rgba(129,140,248,0.08)',tension:0.4,fill:true,pointRadius:2,pointBackgroundColor:C.purple}],{scales:{x:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9},maxTicksLimit:6}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9}}}}});
+
+  document.getElementById('ct-count').textContent=d.length+' posts';
+  document.getElementById('ct-table').innerHTML=d.slice(0,40).map(r=>`<tr>
+    <td>${fmtDate(r['Date'])}</td><td>${r['Content Type']||'—'}</td><td>${num(r['Views']).toLocaleString('en-IN')}</td><td>${num(r['Reach']).toLocaleString('en-IN')}</td><td>${num(r['Likes']).toLocaleString('en-IN')}</td><td>${num(r['Shares']).toLocaleString('en-IN')}</td><td>${num(r['Comments']).toLocaleString('en-IN')}</td><td>${num(r['Saves']).toLocaleString('en-IN')}</td><td>${num(r['Follows']).toLocaleString('en-IN')}</td><td>${r['Published']||'—'}</td></tr>`).join('');
+}
+
+// ── HR ──
+function renderHR(data){
+  const d=filterByDate(data,'Date');
+  const hired=d.filter(r=>(r['Hiring Status']||'').toLowerCase().includes('hired')).length;
+  const offered=d.filter(r=>(r['Offer Letter']||'').toLowerCase()==='yes').length;
+  const onboarded=d.filter(r=>(r['Onboarding Form Filled']||'').toLowerCase()==='yes'||(r['Onboarding Meeting']||'').toLowerCase()==='yes').length;
+  document.getElementById('hr-kpis').innerHTML=
+    kpi('Candidates',d.length,'pipeline','warn')+kpi('Offered',offered,'letters','info')+kpi('Hired',hired,'joined','up')+kpi('Onboarded',onboarded,'completed','up')+kpi('Conv.',d.length?Math.round(hired/d.length*100)+'%':'0%','hire rate','warn');
+
+  const r1done=d.filter(r=>(r['1st Round Rating']||'').toString().trim()!='').length;
+  const r2done=d.filter(r=>(r['2nd Round Interview']||r['2nd Round Inter']||'').toString().trim()!='').length;
+  const rfDone=d.filter(r=>(r['Final Round Interview']||r['Final Round Inte']||'').toString().trim()!='').length;
+  mkChart('hrFunnelChart','bar',['Applied','1st Round','2nd Round','Final','Offer','Hired'],[{data:[d.length,r1done,r2done,rfDone,offered,hired],backgroundColor:['rgba(129,140,248,0.7)','rgba(96,165,250,0.6)','rgba(45,212,191,0.6)','rgba(251,191,36,0.6)','rgba(52,211,153,0.6)','rgba(52,211,153,0.9)'],borderRadius:4}]);
+
+  const statusC={};d.forEach(r=>{const s=r['Hiring Status']||'Pending';statusC[s]=(statusC[s]||0)+1;});
+  mkChart('hrStatusChart','doughnut',Object.keys(statusC),[{data:Object.values(statusC),backgroundColor:[C.green,C.amber,C.red,C.blue,C.purple],borderWidth:0}],{cutout:'60%'});
+
+  const roleC={};d.forEach(r=>{const ro=r['Role']||'Unknown';roleC[ro]=(roleC[ro]||0)+1;});
+  mkChart('hrRoleChart','doughnut',Object.keys(roleC),[{data:Object.values(roleC),backgroundColor:[C.purple,C.blue,C.teal,C.amber,C.pink],borderWidth:0}],{cutout:'55%'});
+
+  const r1pass=d.filter(r=>parseFloat(r['1st Round Rating'])>=3).length;
+  const r2pass=d.filter(r=>parseFloat(r['2nd Round Ratir']||r['2nd Round Rating'])>=3).length;
+  mkChart('hrPassChart','bar',['1st Round','2nd Round','Final'],[{data:[r1done?Math.round(r1pass/r1done*100):0,r2done?Math.round(r2pass/r2done*100):0,rfDone?Math.round(hired/rfDone*100):0],backgroundColor:['rgba(129,140,248,0.6)','rgba(45,212,191,0.6)','rgba(52,211,153,0.7)'],borderRadius:4}],{scales:{x:{grid:{color:DARK},ticks:{color:'#9ca3af',font:{size:10}}},y:{grid:{color:DARK},ticks:{color:'#6b7280',font:{size:9},callback:v=>v+'%'},min:0,max:100}}});
+
+  const intC={};d.forEach(r=>{const i=(r['Done By']||'Unknown').toString().trim();intC[i]=(intC[i]||0)+1;});
+  makeBars('hr-interviewer-bars',Object.entries(intC).sort((a,b)=>b[1]-a[1]).map(([label,val])=>({label,val})),C.blue);
+
+  document.getElementById('hr-count').textContent=d.length+' candidates';
+  document.getElementById('hr-table').innerHTML=d.slice(0,40).map(r=>`<tr>
+    <td>${r['Name']||'—'}</td><td>${r['Role']||'—'}</td><td>${r['Done By']||'—'}</td>
+    <td>${r['1st Round Rating']||'—'}</td><td>${r['2nd Round Ratir']||r['2nd Round Rating']||'—'}</td><td>${r['Final Round Rat']||'—'}</td>
+    <td>${pill(r['Hiring Status'])}</td><td>${r['Phone No']||'—'}</td><td>${fmtDate(r['Joining Date'])}</td></tr>`).join('');
+}
+
+// ── Data load ──
+function loadData(){
+  document.getElementById('loading').style.display='flex';
+  document.querySelectorAll('.dept').forEach(d=>d.classList.remove('active'));
+
+  fetch(API)
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(data=>{
+      document.getElementById('loading').style.display='none';
+      document.getElementById('lupd').textContent='Updated: '+new Date().toLocaleTimeString('en-IN');
+      rawData=data;
+      rawData._all=data;
+      checkAlerts(data);
+      renderCOO(data);
+      document.getElementById('dept-coo').classList.add('active');
+    })
+    .catch(err=>{
+      document.getElementById('loading').innerHTML=`<span style="color:#f87171">Error: ${err.message}. Open as local HTML file in Chrome/Edge.</span>`;
+    });
+}
+
+window.addEventListener('load',loadData);
+setInterval(loadData,30*60*1000);
+</script>
+</body>
+</html>
