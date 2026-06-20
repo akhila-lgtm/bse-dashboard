@@ -142,6 +142,22 @@
     .av-none{font-size:.72rem;color:var(--muted);font-style:italic;}
 
     footer{text-align:center;padding:18px;color:var(--muted);font-size:.69rem;border-top:1px solid var(--b1);}
+
+    /* ── Charts ── */
+    .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+    .chart-grid-1{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:16px 0;}
+    .chart-card{background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:18px;}
+    .chart-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px;}
+    .chart-wrap{position:relative;height:220px;}
+    .chart-wrap.tall{height:280px;}
+
+    /* ── Live dot pulse ── */
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.5)}50%{box-shadow:0 0 0 6px rgba(74,222,128,0)}}
+    .dot{animation:pulse 2s infinite;}
+
+    /* ── KPI count-up ── */
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .kpi-val.animated{animation:fadeUp .5s ease both;}
   </style>
 </head>
 <body>
@@ -227,6 +243,18 @@
     </div>
   </div>
 
+  <!-- ─── RAZORPAY CHARTS ─── -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Daily Revenue — Last 7 Days</div>
+      <div class="chart-wrap"><canvas id="chart-daily-revenue"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Payment Methods</div>
+      <div class="chart-wrap"><canvas id="chart-payment-methods"></canvas></div>
+    </div>
+  </div>
+
   <!-- ─── WISE ACADEMY ─── -->
   <div class="sec"><span class="sec-lbl">Wise Academy</span><span class="sec-tag tag-wise">Platform</span><div class="sec-line"></div></div>
   <div class="err-b" id="wise-err"></div>
@@ -255,6 +283,24 @@
       <div class="kpi-lbl">Total Courses</div>
       <div class="kpi-val" id="k-courses">—</div>
       <div class="kpi-sub" id="k-courses-sub"></div>
+    </div>
+  </div>
+
+  <!-- ─── WISE CHARTS ─── -->
+  <div class="chart-grid">
+    <div class="chart-card" style="grid-column:1/-1">
+      <div class="chart-title">Sessions per Day — Last 30 Days</div>
+      <div class="chart-wrap tall"><canvas id="chart-sessions-per-day"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Top 10 Instructors by Session Count</div>
+      <div class="chart-wrap tall"><canvas id="chart-top-teachers"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Course Distribution</div>
+      <div class="chart-wrap tall"><canvas id="chart-course-dist"></canvas></div>
     </div>
   </div>
 
@@ -327,6 +373,19 @@
 
 <script>
 const g = id => document.getElementById(id);
+
+function countUp(el, target, prefix='', suffix='', decimals=0) {
+  if (!el || target == null || isNaN(target)) return;
+  const steps = 40, stepMs = 800 / steps;
+  let i = 0;
+  el.classList.add('animated');
+  const t = setInterval(() => {
+    i++;
+    const v = target * (i / steps);
+    el.textContent = prefix + (decimals ? v.toFixed(decimals) : Math.floor(v).toLocaleString('en-IN')) + suffix;
+    if (i >= steps) { clearInterval(t); el.textContent = prefix + (decimals ? target.toFixed(decimals) : Math.round(target).toLocaleString('en-IN')) + suffix; }
+  }, stepMs);
+}
 const fmtN  = n => n == null ? '—' : Number(n).toLocaleString('en-IN');
 const fmtR  = n => n == null ? '—' : Number(n).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
 const fmtT  = u => !u ? '—' : new Date(u*1000).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
@@ -378,12 +437,12 @@ async function loadLinks(preset = linksPreset) {
     const res = await fetch(`/api/links?preset=${preset}`);
     const d   = await res.json();
     const L   = d.links;
-    g('k-collected').textContent     = '₹'+fmtR(L.collected);
     g('k-collected-sub').textContent = `from ${fmtN(L.paid)} paid link${L.paid!==1?'s':''}`;
-    g('k-paid').textContent          = fmtN(L.paid);
     g('k-paid-sub').textContent      = `₹${fmtR(L.collected)} collected`;
-    g('k-pending').textContent       = fmtN(L.pending);
-    g('k-total').textContent         = fmtN(L.total);
+    countUp(g('k-collected'), L.collected, '₹', '', 2);
+    countUp(g('k-paid'),    L.paid,    '', '', 0);
+    countUp(g('k-pending'), L.pending, '', '', 0);
+    countUp(g('k-total'),   L.total,   '', '', 0);
     g('cnt-links').textContent       = fmtN(L.total)+' links';
     if (!L.links?.length) {
       emptyRow('tb-links', 5, 'No payment links in this period');
@@ -584,6 +643,15 @@ async function loadAll() {
 
     g('last-upd').textContent = new Date().toLocaleTimeString('en-IN');
 
+    /* ── Count-up animations on KPI values ── */
+    countUp(g('k-students'),  W.students.count,  '', '', 0);
+    countUp(g('k-teachers'),  W.teachers.count,  '', '', 0);
+    countUp(g('k-sessions'),  W.sessions.upcomingCount, '', '', 0);
+    countUp(g('k-courses'),   W.courses.count,   '', '', 0);
+
+    /* ── Render charts ── */
+    renderCharts(d);
+
   } catch(err) {
     console.error(err);
     ['sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av'].forEach(stopSpin);
@@ -599,6 +667,170 @@ g('btn-refresh').addEventListener('click', ()=>{ loadAll(); startCountdown(); })
 g('nav-date').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 loadAll();
 startCountdown();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/* ── Chart.js global defaults ── */
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+Chart.defaults.font.size   = 11;
+
+const C = {
+  cyan:   '#00d4ff',
+  yellow: '#f5b800',
+  green:  '#00ff88',
+  red:    '#ff4444',
+  purple: '#a855f7',
+  blue:   '#60a5fa',
+  orange: '#fb923c',
+  teal:   '#2dd4bf',
+};
+const PALETTE = [C.cyan, C.yellow, C.green, C.purple, C.red, C.blue, C.orange, C.teal, '#e879f9','#34d399'];
+const CHART_ANIM = { duration: 900, easing: 'easeInOutQuart' };
+
+const _charts = {};
+function mkChart(id, config) {
+  if (_charts[id]) _charts[id].destroy();
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  config.options = config.options || {};
+  config.options.animation = { ...CHART_ANIM, ...(config.options.animation || {}) };
+  config.options.plugins = config.options.plugins || {};
+  config.options.plugins.legend = config.options.plugins.legend || { labels: { color: '#94a3b8', boxWidth: 12, padding: 14 } };
+  _charts[id] = new Chart(ctx, config);
+}
+
+/* ── Date helpers ── */
+function dayLabel(iso) {
+  return new Date(iso).toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+}
+function daysAgo(n) {
+  const d = new Date(); d.setDate(d.getDate() - n); d.setHours(0,0,0,0); return d;
+}
+
+/* ── Build last-N-days labels ── */
+function buildDayBuckets(n) {
+  const buckets = {};
+  for (let i = n-1; i >= 0; i--) {
+    const d = daysAgo(i);
+    const label = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    buckets[label] = 0;
+  }
+  return buckets;
+}
+
+/* ── Render all charts ── */
+function renderCharts(d) {
+  const links    = d.razorpay?.links?.links || [];
+  const payments = d.razorpay?.payments?.payments || [];
+  const pastSes  = d.wise?.sessions?.pastItems || [];
+
+  /* 1. Daily Revenue bar */
+  const revBuckets = buildDayBuckets(7);
+  links.forEach(l => {
+    if (l.status !== 'paid') return;
+    const label = new Date(l.createdAt * 1000).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    if (label in revBuckets) revBuckets[label] = (revBuckets[label] || 0) + (l.amount || 0);
+  });
+  mkChart('chart-daily-revenue', {
+    type: 'bar',
+    data: {
+      labels: Object.keys(revBuckets),
+      datasets: [{ label: 'Revenue (₹)', data: Object.values(revBuckets),
+        backgroundColor: C.cyan+'44', borderColor: C.cyan, borderWidth: 2, borderRadius: 5 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: v => '₹'+v.toLocaleString('en-IN') } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  /* 2. Payment methods donut */
+  const methodCount = {};
+  payments.forEach(p => { methodCount[p.method] = (methodCount[p.method] || 0) + 1; });
+  const mLabels = Object.keys(methodCount);
+  mkChart('chart-payment-methods', {
+    type: 'doughnut',
+    data: {
+      labels: mLabels.length ? mLabels : ['No data'],
+      datasets: [{ data: mLabels.length ? Object.values(methodCount) : [1],
+        backgroundColor: PALETTE.slice(0, Math.max(mLabels.length, 1)),
+        borderWidth: 2, borderColor: '#0d0f1e', hoverOffset: 8 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { position: 'bottom' } } }
+  });
+
+  /* 3. Sessions per day (last 30 days from pastItems) */
+  const sesBuckets = buildDayBuckets(30);
+  pastSes.forEach(s => {
+    if (!s.scheduledStartTime) return;
+    const label = new Date(s.scheduledStartTime).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    if (label in sesBuckets) sesBuckets[label] = (sesBuckets[label] || 0) + 1;
+  });
+  mkChart('chart-sessions-per-day', {
+    type: 'line',
+    data: {
+      labels: Object.keys(sesBuckets),
+      datasets: [{ label: 'Sessions', data: Object.values(sesBuckets),
+        borderColor: C.purple, backgroundColor: C.purple+'22', borderWidth: 2,
+        pointRadius: 3, pointBackgroundColor: C.purple, fill: true, tension: 0.4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true } },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  /* 4. Top 10 teachers by session count */
+  const tchCount = {};
+  pastSes.forEach(s => { if (s.instructor && s.instructor !== '—') tchCount[s.instructor] = (tchCount[s.instructor]||0)+1; });
+  const tchSorted = Object.entries(tchCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  mkChart('chart-top-teachers', {
+    type: 'bar',
+    data: {
+      labels: tchSorted.map(e=>e[0]),
+      datasets: [{ label: 'Sessions', data: tchSorted.map(e=>e[1]),
+        backgroundColor: PALETTE, borderRadius: 5, borderWidth: 0 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      scales: { x: { grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }, y: { grid: { display: false } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  /* 5. Course distribution donut */
+  const courseCount = {};
+  const TYPE_MAP = [
+    ['Demo','Demo'], ['Stride','Stride'], ['Century','Century'],
+    ['Transformation','Transformation'], ['Communication','Communication'],
+    ['Professional','Professional'], ['Starter','Starter'],
+  ];
+  pastSes.forEach(s => {
+    const name = s.course || '';
+    let type = TYPE_MAP.find(([k]) => name.toLowerCase().includes(k.toLowerCase()));
+    const key = type ? type[1] : (name || 'Other');
+    courseCount[key] = (courseCount[key]||0)+1;
+  });
+  const cSorted = Object.entries(courseCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  mkChart('chart-course-dist', {
+    type: 'doughnut',
+    data: {
+      labels: cSorted.map(e=>e[0]),
+      datasets: [{ data: cSorted.map(e=>e[1]),
+        backgroundColor: PALETTE.slice(0,cSorted.length),
+        borderWidth: 2, borderColor: '#0d0f1e', hoverOffset: 8 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '60%',
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10 } } } }
+  });
+}
+
 </script>
 </body>
 </html>
