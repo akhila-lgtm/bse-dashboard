@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)",
+      "Bash(curl -s -w '\\\\nHTTP STATUS: %{http_code}' --location https://api.wiseapp.live/user/getStudents --header 'user-agent: VendorIntegrations/brightside-english' --header 'x-api-key: f69d87a337edbf95a9011d1c4be5fd44' --header 'x-wise-namespace: brightside-english' --header 'x-wise-institute-id: 69c40768b8ae27f94c10e875' --header 'Authorization: Basic NjljNDA3Njg1OWM0NTlkMWExMmM2M2FjOmY2OWQ4N2EzMzdlZGJmOTVhOTAxMWQxYzRiZTVmZDQ0')",
+      "Bash(curl -s -H 'user-agent: VendorIntegrations/brightside-english' -H 'x-api-key: f69d87a337edbf95a9011d1c4be5fd44' -H 'x-wise-namespace: brightside-english' -H 'x-wise-institute-id: 69c40768b8ae27f94c10e875' -H 'Authorization: Basic NjljNDA3Njg1OWM0NTlkMWExMmM2M2FjOmY2OWQ4N2EzMzdlZGJmOTVhOTAxMWQxYzRiZTVmZDQ0' 'https://api.wiseapp.live/institutes/69c40768b8ae27f94c10e875/students?page_number=1&page_size=20&paginateBy=COUNT')",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s http://localhost:3000/api/all)",
+      "Bash(node -e ' *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
