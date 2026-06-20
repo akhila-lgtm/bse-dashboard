@@ -158,27 +158,27 @@ async function getWiseData() {
   return { students, teachers, sessions, courses, transactions, availability };
 }
 
-async function getRazorpayLinks() {
+async function getRazorpayLinks(from, to) {
   try {
-    const { from, to } = todayRange();
+    // Razorpay payment_links doesn't support from/to server-side, so fetch latest 100 and filter client-side
     const r = await axios.get('https://api.razorpay.com/v1/payment_links', {
       headers: { Authorization: `Basic ${RAZORPAY_AUTH}` }, params: { count: 100 }
     });
-    const all   = r.data.items || [];
-    const today = all.filter(l => l.created_at >= from && l.created_at < to);
-    const paid  = today.filter(l => l.status === 'paid');
+    const all      = r.data.items || [];
+    const filtered = all.filter(l => l.created_at >= from && l.created_at < to);
+    const paid     = filtered.filter(l => l.status === 'paid');
     return {
-      total: today.length,
-      paid: paid.length,
-      pending: today.filter(l => l.status === 'created').length,
+      total:     filtered.length,
+      paid:      paid.length,
+      pending:   filtered.filter(l => l.status === 'created').length,
       collected: paid.reduce((s, l) => s + (l.amount_paid || 0), 0) / 100,
-      links: today.slice(0, 50).map(l => ({
-        id: l.id,
-        description: l.description || '—',
-        amount: (l.amount || 0) / 100,
-        status: l.status,
-        createdAt: l.created_at,
-        customerName: l.customer?.name || '—',
+      links: filtered.slice(0, 100).map(l => ({
+        id:              l.id,
+        description:     l.description || '—',
+        amount:          (l.amount || 0) / 100,
+        status:          l.status,
+        createdAt:       l.created_at,
+        customerName:    l.customer?.name    || '—',
         customerContact: l.customer?.contact || '—',
       }))
     };
@@ -206,9 +206,28 @@ async function getRazorpayPayments() {
   }
 }
 
+function rangeFor(preset) {
+  const now = Math.floor(Date.now() / 1000);
+  const sod = (() => { const d = new Date(); d.setHours(0,0,0,0); return Math.floor(d/1000); })();
+  if (preset === 'today')   return { from: sod,           to: sod + 86400 };
+  if (preset === '7days')   return { from: sod - 6*86400, to: sod + 86400 };
+  if (preset === '30days')  return { from: sod - 29*86400,to: sod + 86400 };
+  return { from: sod - 6*86400, to: sod + 86400 }; // default: 7 days
+}
+
+app.get('/api/links', async (req, res) => {
+  const from   = req.query.from   ? parseInt(req.query.from)  : null;
+  const to     = req.query.to     ? parseInt(req.query.to)    : null;
+  const preset = req.query.preset || '7days';
+  const range  = (from && to) ? { from, to } : rangeFor(preset);
+  const links  = await getRazorpayLinks(range.from, range.to);
+  res.json({ links, from: range.from, to: range.to, timestamp: Date.now() });
+});
+
 app.get('/api/all', async (req, res) => {
+  const range = rangeFor('7days');
   const [links, payments, wise] = await Promise.all([
-    getRazorpayLinks(), getRazorpayPayments(), getWiseData()
+    getRazorpayLinks(range.from, range.to), getRazorpayPayments(), getWiseData()
   ]);
   res.json({ razorpay: { links, payments }, wise, timestamp: Date.now() });
 });

@@ -87,6 +87,9 @@
     .tbl-btns{display:flex;gap:6px;margin-bottom:8px;}
     .tbl-btn{background:#1e2135;border:1px solid var(--b1);color:var(--t1);font-size:.73rem;padding:4px 12px;border-radius:6px;cursor:pointer;transition:background .15s;}
     .tbl-btn:hover{background:#2a2f4a;}
+    .rng-btn{background:#1e2135;border:1px solid var(--b1);color:var(--muted);font-size:.72rem;padding:4px 13px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s;}
+    .rng-btn:hover{background:#2a2f4a;color:var(--t1);}
+    .rng-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
     table{width:100%;border-collapse:collapse;font-size:.79rem;}
     thead th{text-align:left;padding:9px 15px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--s2);border-bottom:1px solid var(--b1);white-space:nowrap;}
     tbody tr{border-bottom:1px solid rgba(31,34,53,.6);transition:background .12s;}
@@ -170,18 +173,25 @@
     </div>
     <div class="kpi purple">
       <div class="kpi-ico">🔗</div>
-      <div class="kpi-lbl">Total Links Today</div>
+      <div class="kpi-lbl">Total Links</div>
       <div class="kpi-val" id="k-total">—</div>
-      <div class="kpi-sub">created today</div>
+      <div class="kpi-sub">in selected period</div>
     </div>
   </div>
   <div class="g2">
     <div class="card">
       <div class="card-hdr">
-        <span class="card-title">Today's Payment Links</span>
+        <span class="card-title">Payment Links — <span id="lbl-links">Last 7 Days</span></span>
         <div class="card-meta"><span class="c-badge" id="cnt-links">—</span><span class="spin on" id="sp-links"></span></div>
       </div>
-      <div class="ts">
+      <div class="tbl-btns" style="justify-content:space-between;align-items:center;">
+        <div style="display:flex;gap:6px;">
+          <button class="rng-btn" data-preset="today"  onclick="setLinksPreset('today')">Today</button>
+          <button class="rng-btn active" data-preset="7days"  onclick="setLinksPreset('7days')">Last 7 Days</button>
+          <button class="rng-btn" data-preset="30days" onclick="setLinksPreset('30days')">Last 30 Days</button>
+        </div>
+      </div>
+      <div class="ts" id="ts-links">
         <table>
           <thead><tr><th>Customer</th><th>Description</th><th>Amount</th><th>Status</th><th>Time</th></tr></thead>
           <tbody id="tb-links"><tr><td colspan="5"><div class="empty">Loading…</div></td></tr></tbody>
@@ -332,16 +342,23 @@ const setErr    = (id, msg) => { const e = g(id); if (!e) return; if (msg) { e.t
 const emptyRow  = (id, cols, msg='No data') => { g(id).innerHTML=`<tr><td colspan="${cols}"><div class="empty">${msg}</div></td></tr>`; };
 function scrollTbl(id, delta) { const el = document.getElementById(id); if (el) el.scrollBy({ top: delta, behavior: 'smooth' }); }
 
-async function loadAll() {
-  ['sp-links','sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av'].forEach(startSpin);
-  try {
-    const res = await fetch('/api/all');
-    const d   = await res.json();
+const PRESET_LABELS = { today: 'Today', '7days': 'Last 7 Days', '30days': 'Last 30 Days' };
+let linksPreset = '7days';
 
-    /* ── Razorpay links ── */
-    const L = d.razorpay.links;
-    setErr('rzp-err', L.error || null);
-    g('k-collected').textContent     = fmtR(L.collected);
+function setLinksPreset(preset) {
+  linksPreset = preset;
+  document.querySelectorAll('.rng-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === preset));
+  g('lbl-links').textContent = PRESET_LABELS[preset] || preset;
+  loadLinks(preset);
+}
+
+async function loadLinks(preset = linksPreset) {
+  startSpin('sp-links');
+  try {
+    const res = await fetch(`/api/links?preset=${preset}`);
+    const d   = await res.json();
+    const L   = d.links;
+    g('k-collected').textContent     = '₹'+fmtR(L.collected);
     g('k-collected-sub').textContent = `from ${fmtN(L.paid)} paid link${L.paid!==1?'s':''}`;
     g('k-paid').textContent          = fmtN(L.paid);
     g('k-paid-sub').textContent      = `₹${fmtR(L.collected)} collected`;
@@ -349,17 +366,29 @@ async function loadAll() {
     g('k-total').textContent         = fmtN(L.total);
     g('cnt-links').textContent       = fmtN(L.total)+' links';
     if (!L.links?.length) {
-      emptyRow('tb-links', 5, 'No payment links created today');
+      emptyRow('tb-links', 5, 'No payment links in this period');
     } else {
       g('tb-links').innerHTML = L.links.map(l=>`<tr>
         <td><div>${l.customerName}</div><div class="tm">${l.customerContact}</div></td>
-        <td class="tg" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.description}</td>
+        <td class="tm">${l.description}</td>
         <td class="ta">₹${fmtR(l.amount)}</td>
         <td>${bdg(l.status)}</td>
         <td class="tm">${fmtT(l.createdAt)}</td>
       </tr>`).join('');
     }
-    stopSpin('sp-links');
+  } catch(err) {
+    console.error('loadLinks:', err);
+    emptyRow('tb-links', 5, 'Failed to load');
+  }
+  stopSpin('sp-links');
+}
+
+async function loadAll() {
+  ['sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av'].forEach(startSpin);
+    loadLinks(linksPreset);
+  try {
+    const res = await fetch('/api/all');
+    const d   = await res.json();
 
     /* ── Razorpay payments ── */
     const P = d.razorpay.payments;
@@ -478,7 +507,7 @@ async function loadAll() {
 
   } catch(err) {
     console.error(err);
-    ['sp-links','sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av'].forEach(stopSpin);
+    ['sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av'].forEach(stopSpin);
   }
 }
 
