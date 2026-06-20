@@ -404,7 +404,8 @@ async function loadLinks(preset = linksPreset) {
 }
 
 window._sesTab = 'upcoming';
-window._sesItems = [];
+window._sesUpcoming = [];
+window._sesPast = [];
 
 function switchSesTab(tab) {
   window._sesTab = tab;
@@ -437,12 +438,9 @@ function fmtTimeRange(start, end) {
 }
 
 function renderSessions(tab) {
-  const all   = window._sesItems;
-  const LIVE_UPCOMING = ['UPCOMING','LIVE'];
-  const PAST  = ['ENDED','MISSED','CANCELLED'];
-  let rows = tab === 'upcoming'
-    ? all.filter(s => LIVE_UPCOMING.includes(s.meetingStatus)).sort((a,b)=>new Date(a.scheduledStartTime)-new Date(b.scheduledStartTime))
-    : all.filter(s => PAST.includes(s.meetingStatus) || !LIVE_UPCOMING.includes(s.meetingStatus)).sort((a,b)=>new Date(b.scheduledStartTime)-new Date(a.scheduledStartTime));
+  const rows = tab === 'upcoming'
+    ? [...window._sesUpcoming].sort((a,b)=>new Date(a.scheduledStartTime)-new Date(b.scheduledStartTime))
+    : [...window._sesPast].sort((a,b)=>new Date(b.scheduledStartTime)-new Date(a.scheduledStartTime));
 
   if (!rows.length) {
     const msg = tab==='upcoming' ? 'No upcoming sessions' : 'No past sessions';
@@ -506,15 +504,15 @@ async function loadAll() {
       errs.push(W.sessions.error);
     } else {
       g('k-sessions').textContent     = fmtN(W.sessions.upcomingCount);
-      g('k-sessions-sub').textContent = `of ${fmtN(W.sessions.count)} total`;
+      g('k-sessions-sub').textContent = `of ${fmtN(W.sessions.totalCount)} total`;
     }
     setErr('wise-err', errs.length ? [...new Set(errs)].join(' · ') : null);
 
     /* ── Sessions table ── */
-    window._sesItems = W.sessions.items || [];
-    g('cnt-sessions').textContent = fmtN(W.sessions.count)+' total';
-    const upcomingCt = window._sesItems.filter(s=>['UPCOMING','LIVE'].includes(s.meetingStatus)).length;
-    g('ses-upcoming-ct').textContent = '('+upcomingCt+')';
+    window._sesUpcoming = W.sessions.upcomingItems || [];
+    window._sesPast     = W.sessions.pastItems     || [];
+    g('cnt-sessions').textContent       = fmtN(W.sessions.totalCount)+' total';
+    g('ses-upcoming-ct').textContent    = '('+fmtN(W.sessions.upcomingCount)+')';
     if (W.sessions.error) {
       emptyRow('tb-sessions', 5, W.sessions.error);
     } else {

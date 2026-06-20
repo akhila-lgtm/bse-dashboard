@@ -5,16 +5,20 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const RAZORPAY_KEY    = process.env.RAZORPAY_KEY_ID     || 'rzp_live_E0g8FoSt8t63NJ';
-const RAZORPAY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'pziga30pgfZnciQL67iq2IAo';
-const RAZORPAY_AUTH   = Buffer.from(`${RAZORPAY_KEY}:${RAZORPAY_SECRET}`).toString('base64');
+// API credentials — set these in Render environment variables
+const RAZORPAY_KEY_ID     = process.env.RAZORPAY_KEY_ID     || 'rzp_live_E0g8FoSt8t63NJ';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'pziga30pgfZnciQL67iq2IAo';
+const RAZORPAY_AUTH       = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64');
 
-const WISE_BASE    = 'https://api.wiseapp.live';
-const INST         = process.env.WISE_INSTITUTE_ID || '69c40768b8ae27f94c10e875';
-const WISE_API_KEY = process.env.WISE_API_KEY      || 'f69d87a337edbf95a9011d1c4be5fd44';
-// Basic auth = base64(instituteId:apiKey)
-const WISE_AUTH    = process.env.WISE_AUTH_BASIC
-  || 'Basic NjljNDA3Njg1OWM0NTlkMWExMmM2M2FjOmY2OWQ4N2EzMzdlZGJmOTVhOTAxMWQxYzRiZTVmZDQ0';
+const WISE_BASE        = 'https://api.wiseapp.live';
+const WISE_INSTITUTE_ID = process.env.WISE_INSTITUTE_ID || '69c40768b8ae27f94c10e875';
+const WISE_API_KEY     = process.env.WISE_API_KEY       || 'f69d87a337edbf95a9011d1c4be5fd44';
+const WISE_USER_ID     = process.env.WISE_USER_ID       || '69c4076859c459d1a12c63ac';
+// Basic auth = base64(WISE_USER_ID:WISE_API_KEY) — confirmed from live API credentials
+const WISE_AUTH        = process.env.WISE_AUTH_BASIC
+  || 'Basic ' + Buffer.from(`${WISE_USER_ID}:${WISE_API_KEY}`).toString('base64');
+
+const INST = WISE_INSTITUTE_ID; // shorthand used throughout
 
 const WISE_HEADERS = {
   'user-agent':          'VendorIntegrations/brightside-english',
@@ -81,10 +85,13 @@ async function getTeacherAvailability(teachers) {
 
 async function getWiseData() {
   // Fetch all core data in parallel (page_size=100 for table display; counts come from response fields)
-  const [stuRes, tchRes, sesRes, clsRes, txnRes] = await Promise.all([
+  const [stuRes, tchRes, sesFutureRes, sesPastRes, clsRes, txnRes] = await Promise.all([
     wiseGet(`/institutes/${INST}/students?status=ACCEPTED&paginateBy=COUNT&page_size=100&page_number=1`),
     wiseGet(`/institutes/${INST}/teachers?paginateBy=COUNT&page_size=100&page_number=1`),
-    wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&page_size=100&page_number=1`),
+    // status=FUTURE → upcoming sessions (totalRecords = true upcoming count)
+    wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&status=FUTURE&page_size=100&page_number=1`),
+    // status=PAST → past sessions for the Past tab
+    wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&status=PAST&page_size=100&page_number=1`),
     wiseGet(`/institutes/${INST}/classes?paginateBy=COUNT&page_size=50&page_number=1`),
     wiseGet(`/institutes/${INST}/transactions?paginateBy=COUNT&page_number=1&page_size=100`),
   ]);
@@ -110,31 +117,38 @@ async function getWiseData() {
   const courses = parse(clsRes, 'classes', 'classesCount');           // count = data.classesCount
   const transactions = parse(txnRes, 'transactions');
 
-  // Sessions — confirmed field names from live API
-  const sesRaw  = parse(sesRes, 'sessions', 'totalRecords');          // count = data.totalRecords
+  // Sessions: FUTURE (upcoming) + PAST fetched separately for accurate counts
+  const sesFuture = parse(sesFutureRes, 'sessions', 'totalRecords'); // upcomingCount = totalRecords
+  const sesPast   = parse(sesPastRes,   'sessions', 'totalRecords');
+
+  function mapSession(s) {
+    const instructor = s.userId?.name
+      || s.participants?.find(p => p.isTeacher)?.name
+      || '—';
+    const students = (s.participants || [])
+      .filter(p => !p.isTeacher && p.name)
+      .map(p => p.name);
+    const classTypeLbl = { ONE_TO_ONE: '1:1', GROUP: 'Group', WEBINAR: 'Webinar' }[s.classId?.classType] || s.classId?.classType || '';
+    return {
+      _id:                s._id,
+      course:             s.classId?.name    || s.title || 'Session',
+      subject:            s.classId?.subject || '',
+      classType:          classTypeLbl,
+      instructor,
+      students,
+      scheduledStartTime: s.scheduledStartTime || s.start_time || null,
+      scheduledEndTime:   s.scheduledEndTime   || s.end_time   || null,
+      meetingStatus:      s.meetingStatus      || '—',
+    };
+  }
+
   const sessions = {
-    ...sesRaw,
-    upcomingCount: sesRaw.items.filter(s => ['UPCOMING','LIVE'].includes(s.meetingStatus)).length,
-    items: sesRaw.items.map(s => {
-      const instructor = s.userId?.name
-        || s.participants?.find(p => p.isTeacher)?.name
-        || '—';
-      const students = (s.participants || [])
-        .filter(p => !p.isTeacher && p.name)
-        .map(p => p.name);
-      const classTypeLbl = { ONE_TO_ONE: '1:1', GROUP: 'Group', WEBINAR: 'Webinar' }[s.classId?.classType] || s.classId?.classType || '';
-      return {
-        _id:                s._id,
-        course:             s.classId?.name    || s.title || 'Session',
-        subject:            s.classId?.subject || '',
-        classType:          classTypeLbl,
-        instructor,
-        students,
-        scheduledStartTime: s.scheduledStartTime || s.start_time || null,
-        scheduledEndTime:   s.scheduledEndTime   || s.end_time   || null,
-        meetingStatus:      s.meetingStatus      || '—',
-      };
-    }),
+    totalCount:    (sesFuture.count || 0) + (sesPast.count || 0),
+    upcomingCount: sesFuture.count || 0,
+    pastCount:     sesPast.count   || 0,
+    upcomingItems: sesFuture.items.map(mapSession),
+    pastItems:     sesPast.items.map(mapSession),
+    error:         sesFuture.error || sesPast.error || null,
   };
 
   // Teachers — userId is nested object: { _id, name, email, phoneNumber }
