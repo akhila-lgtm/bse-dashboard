@@ -90,6 +90,21 @@
     .rng-btn{background:#1e2135;border:1px solid var(--b1);color:var(--muted);font-size:.72rem;padding:4px 13px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s;}
     .rng-btn:hover{background:#2a2f4a;color:var(--t1);}
     .rng-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .ses-tabs{display:flex;gap:0;border-bottom:1px solid var(--b1);margin-bottom:2px;}
+    .ses-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:.8rem;font-weight:600;padding:8px 18px;cursor:pointer;transition:color .15s,border-color .15s;margin-bottom:-1px;}
+    .ses-tab:hover{color:var(--t1);}
+    .ses-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+    .ses-course-name{font-weight:600;font-size:.82rem;color:var(--t1);}
+    .ses-course-sub{font-size:.72rem;color:var(--muted);margin-top:2px;}
+    .ses-student{font-size:.73rem;color:var(--teal,#4ecdc4);margin-top:1px;}
+    .badge-live{background:#16a34a22;color:#4ade80;border:1px solid #16a34a55;padding:2px 9px;border-radius:4px;font-size:.68rem;font-weight:700;letter-spacing:.04em;}
+    .badge-upcoming{background:#1d4ed822;color:#60a5fa;border:1px solid #1d4ed855;padding:2px 9px;border-radius:4px;font-size:.68rem;font-weight:700;}
+    .badge-missed{background:#92400e22;color:#fbbf24;border:1px solid #92400e55;padding:2px 9px;border-radius:4px;font-size:.68rem;font-weight:700;}
+    .badge-ended{background:#1e213522;color:#6b7280;border:1px solid #374151;padding:2px 9px;border-radius:4px;font-size:.68rem;font-weight:700;}
+    .badge-cancelled{background:#7c2d1222;color:#f97316;border:1px solid #7c2d1255;padding:2px 9px;border-radius:4px;font-size:.68rem;font-weight:700;}
+    .ses-actions{display:flex;gap:5px;margin-top:4px;}
+    .btn-join{background:#16a34a;color:#fff;border:none;border-radius:4px;padding:2px 9px;font-size:.68rem;cursor:pointer;}
+    .btn-end{background:#dc2626;color:#fff;border:none;border-radius:4px;padding:2px 9px;font-size:.68rem;cursor:pointer;}
     table{width:100%;border-collapse:collapse;font-size:.79rem;}
     thead th{text-align:left;padding:9px 15px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--s2);border-bottom:1px solid var(--b1);white-space:nowrap;}
     tbody tr{border-bottom:1px solid rgba(31,34,53,.6);transition:background .12s;}
@@ -244,16 +259,21 @@
   </div>
 
   <div class="g2">
-    <div class="card">
+    <div class="card" style="grid-column:1/-1">
       <div class="card-hdr">
         <span class="card-title">Sessions</span>
         <div class="card-meta"><span class="c-badge" id="cnt-sessions">—</span><span class="spin on" id="sp-sessions"></span></div>
       </div>
-      <div class="tbl-btns"><button class="tbl-btn" onclick="scrollTbl('ts-sessions',-200)">↑ Up</button><button class="tbl-btn" onclick="scrollTbl('ts-sessions',200)">↓ Down</button></div>
+      <!-- tabs -->
+      <div class="ses-tabs">
+        <button class="ses-tab active" id="tab-upcoming" onclick="switchSesTab('upcoming')">Upcoming <span id="ses-upcoming-ct">(0)</span></button>
+        <button class="ses-tab" id="tab-past" onclick="switchSesTab('past')">Past</button>
+      </div>
+      <div class="tbl-btns" style="margin-top:6px"><button class="tbl-btn" onclick="scrollTbl('ts-sessions',-200)">↑ Up</button><button class="tbl-btn" onclick="scrollTbl('ts-sessions',200)">↓ Down</button></div>
       <div class="ts" id="ts-sessions">
         <table>
-          <thead><tr><th>Title</th><th>Course</th><th>Start Time</th><th>Status</th></tr></thead>
-          <tbody id="tb-sessions"><tr><td colspan="4"><div class="empty">Loading…</div></td></tr></tbody>
+          <thead><tr><th>Course</th><th>Instructor</th><th>Date</th><th>Time</th><th>Status</th></tr></thead>
+          <tbody id="tb-sessions"><tr><td colspan="5"><div class="empty">Loading…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -383,6 +403,71 @@ async function loadLinks(preset = linksPreset) {
   stopSpin('sp-links');
 }
 
+window._sesTab = 'upcoming';
+window._sesItems = [];
+
+function switchSesTab(tab) {
+  window._sesTab = tab;
+  document.getElementById('tab-upcoming').classList.toggle('active', tab==='upcoming');
+  document.getElementById('tab-past').classList.toggle('active', tab==='past');
+  renderSessions(tab);
+}
+
+function sesBadge(status) {
+  switch(status) {
+    case 'LIVE':      return '<span class="badge-live">● Live</span>';
+    case 'UPCOMING':  return '<span class="badge-upcoming">Upcoming</span>';
+    case 'ENDED':     return '<span class="badge-ended">Completed</span>';
+    case 'MISSED':    return '<span class="badge-missed">Missed</span>';
+    case 'CANCELLED': return '<span class="badge-cancelled">Cancelled</span>';
+    default:          return '<span class="badge-ended">'+status+'</span>';
+  }
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function fmtTimeRange(start, end) {
+  if (!start) return '—';
+  const fmt = t => new Date(t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+  return fmt(start) + (end ? ' – ' + fmt(end) : '');
+}
+
+function renderSessions(tab) {
+  const all   = window._sesItems;
+  const LIVE_UPCOMING = ['UPCOMING','LIVE'];
+  const PAST  = ['ENDED','MISSED','CANCELLED'];
+  let rows = tab === 'upcoming'
+    ? all.filter(s => LIVE_UPCOMING.includes(s.meetingStatus)).sort((a,b)=>new Date(a.scheduledStartTime)-new Date(b.scheduledStartTime))
+    : all.filter(s => PAST.includes(s.meetingStatus) || !LIVE_UPCOMING.includes(s.meetingStatus)).sort((a,b)=>new Date(b.scheduledStartTime)-new Date(a.scheduledStartTime));
+
+  if (!rows.length) {
+    const msg = tab==='upcoming' ? 'No upcoming sessions' : 'No past sessions';
+    g('tb-sessions').innerHTML = `<tr><td colspan="5"><div class="empty">${msg}</div></td></tr>`;
+    return;
+  }
+
+  g('tb-sessions').innerHTML = rows.map(s => {
+    const studentLine = s.students?.length ? `<div class="ses-student">👤 ${s.students.slice(0,2).join(', ')}${s.students.length>2?' +more':''}</div>` : '';
+    const typePill    = s.classType ? ` <span style="font-size:.65rem;background:#1e2135;border:1px solid var(--b1);padding:1px 6px;border-radius:3px;color:var(--muted)">${s.classType}</span>` : '';
+    const liveActions = s.meetingStatus==='LIVE' ? `<div class="ses-actions"><button class="btn-join">Join</button><button class="btn-end">End</button></div>` : '';
+    return `<tr>
+      <td>
+        <div class="ses-course-name">${s.course}${typePill}</div>
+        ${s.subject && s.subject!==s.course ? `<div class="ses-course-sub">${s.subject}</div>` : ''}
+        ${studentLine}
+      </td>
+      <td class="tm">${s.instructor}</td>
+      <td class="tm">${fmtDate(s.scheduledStartTime)}</td>
+      <td class="tm" style="white-space:nowrap">${fmtTimeRange(s.scheduledStartTime,s.scheduledEndTime)}</td>
+      <td>${sesBadge(s.meetingStatus)}${liveActions}</td>
+    </tr>`;
+  }).join('');
+}
+
 async function loadAll() {
   ['sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av'].forEach(startSpin);
     loadLinks(linksPreset);
@@ -426,18 +511,14 @@ async function loadAll() {
     setErr('wise-err', errs.length ? [...new Set(errs)].join(' · ') : null);
 
     /* ── Sessions table ── */
+    window._sesItems = W.sessions.items || [];
     g('cnt-sessions').textContent = fmtN(W.sessions.count)+' total';
+    const upcomingCt = window._sesItems.filter(s=>['UPCOMING','LIVE'].includes(s.meetingStatus)).length;
+    g('ses-upcoming-ct').textContent = '('+upcomingCt+')';
     if (W.sessions.error) {
-      emptyRow('tb-sessions', 4, W.sessions.error);
-    } else if (!W.sessions.items?.length) {
-      emptyRow('tb-sessions', 4, 'No sessions found');
+      emptyRow('tb-sessions', 5, W.sessions.error);
     } else {
-      g('tb-sessions').innerHTML = W.sessions.items.map(s=>`<tr>
-        <td>${s.title}</td>
-        <td class="tg">${s.course}</td>
-        <td class="tm">${fmtDT(s.scheduledStartTime)}</td>
-        <td>${bdg(s.meetingStatus)}</td>
-      </tr>`).join('');
+      renderSessions(window._sesTab || 'upcoming');
     }
     stopSpin('sp-sessions');
 

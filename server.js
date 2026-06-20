@@ -114,16 +114,27 @@ async function getWiseData() {
   const sesRaw  = parse(sesRes, 'sessions', 'totalRecords');          // count = data.totalRecords
   const sessions = {
     ...sesRaw,
-    upcomingCount: sesRaw.items.filter(s => s.meetingStatus === 'UPCOMING').length,
-    items: sesRaw.items.map(s => ({
-      _id:                s._id,
-      title:              s.title || 'Session',
-      course:             s.classId?.name || '—',
-      scheduledStartTime: s.scheduledStartTime || s.start_time || null,
-      scheduledEndTime:   s.scheduledEndTime   || s.end_time   || null,
-      meetingStatus:      s.meetingStatus || s.type || '—',
-      teacher:            s.userId?.name || '—',
-    })),
+    upcomingCount: sesRaw.items.filter(s => ['UPCOMING','LIVE'].includes(s.meetingStatus)).length,
+    items: sesRaw.items.map(s => {
+      const instructor = s.userId?.name
+        || s.participants?.find(p => p.isTeacher)?.name
+        || '—';
+      const students = (s.participants || [])
+        .filter(p => !p.isTeacher && p.name)
+        .map(p => p.name);
+      const classTypeLbl = { ONE_TO_ONE: '1:1', GROUP: 'Group', WEBINAR: 'Webinar' }[s.classId?.classType] || s.classId?.classType || '';
+      return {
+        _id:                s._id,
+        course:             s.classId?.name    || s.title || 'Session',
+        subject:            s.classId?.subject || '',
+        classType:          classTypeLbl,
+        instructor,
+        students,
+        scheduledStartTime: s.scheduledStartTime || s.start_time || null,
+        scheduledEndTime:   s.scheduledEndTime   || s.end_time   || null,
+        meetingStatus:      s.meetingStatus      || '—',
+      };
+    }),
   };
 
   // Teachers — userId is nested object: { _id, name, email, phoneNumber }
