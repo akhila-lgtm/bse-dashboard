@@ -3,20 +3,25 @@ const axios = require('axios');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-const RAZORPAY_KEY = 'rzp_live_E0g8FoSt8t63NJ';
-const RAZORPAY_SECRET = 'pziga30pgfZnciQL67iq2IAo';
-const RAZORPAY_AUTH = Buffer.from(`${RAZORPAY_KEY}:${RAZORPAY_SECRET}`).toString('base64');
+const RAZORPAY_KEY    = process.env.RAZORPAY_KEY_ID     || 'rzp_live_E0g8FoSt8t63NJ';
+const RAZORPAY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'pziga30pgfZnciQL67iq2IAo';
+const RAZORPAY_AUTH   = Buffer.from(`${RAZORPAY_KEY}:${RAZORPAY_SECRET}`).toString('base64');
 
-const WISE_BASE = 'https://api.wiseapp.live';
-const INST = '69c40768b8ae27f94c10e875';
+const WISE_BASE    = 'https://api.wiseapp.live';
+const INST         = process.env.WISE_INSTITUTE_ID || '69c40768b8ae27f94c10e875';
+const WISE_API_KEY = process.env.WISE_API_KEY      || 'f69d87a337edbf95a9011d1c4be5fd44';
+// Basic auth = base64(instituteId:apiKey)
+const WISE_AUTH    = process.env.WISE_AUTH_BASIC
+  || 'Basic NjljNDA3Njg1OWM0NTlkMWExMmM2M2FjOmY2OWQ4N2EzMzdlZGJmOTVhOTAxMWQxYzRiZTVmZDQ0';
+
 const WISE_HEADERS = {
-  'user-agent': 'VendorIntegrations/brightside-english',
-  'x-api-key': 'f69d87a337edbf95a9011d1c4be5fd44',
-  'x-wise-namespace': 'brightside-english',
+  'user-agent':          'VendorIntegrations/brightside-english',
+  'x-api-key':           WISE_API_KEY,
+  'x-wise-namespace':    'brightside-english',
   'x-wise-institute-id': INST,
-  'Authorization': 'Basic NjljNDA3Njg1OWM0NTlkMWExMmM2M2FjOmY2OWQ4N2EzMzdlZGJmOTVhOTAxMWQxYzRiZTVmZDQ0',
+  'Authorization':       WISE_AUTH,
 };
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -53,8 +58,9 @@ async function getTeacherAvailability(teachers) {
   const endTime   = weekEnd.toISOString();
 
   const tasks = teachers.map(t => async () => {
-    const userId = t.userId?._id;
-    const name   = t.userId?.name || '—';
+    // teachers.items are already flattened: { name, email, userId (string id), ... }
+    const userId = t.userId;
+    const name   = t.name || '—';
     if (!userId) return { name, timezone: null, slots: [], sessionCount: 0, error: 'no userId' };
 
     const res = await wiseGet(
@@ -65,7 +71,7 @@ async function getTeacherAvailability(teachers) {
 
     const d = res.raw?.data ?? {};
     const slots        = d.workingHours?.slots ?? [];
-    const timezone     = d.workingHours?.timezone ?? null;
+    const timezone     = d.workingHours?.timezone ?? d.timezone ?? null;
     const sessionCount = Array.isArray(d.sessions) ? d.sessions.length : 0;
     return { name, timezone, slots, sessionCount, error: null };
   });
