@@ -83,7 +83,10 @@
     .spin.on{display:inline-block;}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    .ts{overflow-x:auto;}
+    .ts{overflow-x:auto;overflow-y:auto;max-height:420px;}
+    .tbl-btns{display:flex;gap:6px;margin-bottom:8px;}
+    .tbl-btn{background:#1e2135;border:1px solid var(--b1);color:var(--t1);font-size:.73rem;padding:4px 12px;border-radius:6px;cursor:pointer;transition:background .15s;}
+    .tbl-btn:hover{background:#2a2f4a;}
     table{width:100%;border-collapse:collapse;font-size:.79rem;}
     thead th{text-align:left;padding:9px 15px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--s2);border-bottom:1px solid var(--b1);white-space:nowrap;}
     tbody tr{border-bottom:1px solid rgba(31,34,53,.6);transition:background .12s;}
@@ -236,7 +239,8 @@
         <span class="card-title">Sessions</span>
         <div class="card-meta"><span class="c-badge" id="cnt-sessions">—</span><span class="spin on" id="sp-sessions"></span></div>
       </div>
-      <div class="ts">
+      <div class="tbl-btns"><button class="tbl-btn" onclick="scrollTbl('ts-sessions',-200)">↑ Up</button><button class="tbl-btn" onclick="scrollTbl('ts-sessions',200)">↓ Down</button></div>
+      <div class="ts" id="ts-sessions">
         <table>
           <thead><tr><th>Title</th><th>Course</th><th>Start Time</th><th>Status</th></tr></thead>
           <tbody id="tb-sessions"><tr><td colspan="4"><div class="empty">Loading…</div></td></tr></tbody>
@@ -248,7 +252,8 @@
         <span class="card-title">Platform Transactions</span>
         <div class="card-meta"><span class="c-badge" id="cnt-txn">—</span><span class="spin on" id="sp-txn"></span></div>
       </div>
-      <div class="ts">
+      <div class="tbl-btns"><button class="tbl-btn" onclick="scrollTbl('ts-txn',-200)">↑ Up</button><button class="tbl-btn" onclick="scrollTbl('ts-txn',200)">↓ Down</button></div>
+      <div class="ts" id="ts-txn">
         <table>
           <thead><tr><th>Amount</th><th>Date</th><th>Status</th><th>Method / Type</th></tr></thead>
           <tbody id="tb-txn"><tr><td colspan="4"><div class="empty">Loading…</div></td></tr></tbody>
@@ -264,7 +269,8 @@
         <span class="card-title">Teachers</span>
         <div class="card-meta"><span class="c-badge" id="cnt-teachers">—</span><span class="spin on" id="sp-teachers"></span></div>
       </div>
-      <div class="ts">
+      <div class="tbl-btns"><button class="tbl-btn" onclick="scrollTbl('ts-teachers',-200)">↑ Up</button><button class="tbl-btn" onclick="scrollTbl('ts-teachers',200)">↓ Down</button></div>
+      <div class="ts" id="ts-teachers">
         <table>
           <thead><tr><th>Name</th><th>Email</th><th>Contact</th><th>Status</th><th>Joined</th></tr></thead>
           <tbody id="tb-teachers"><tr><td colspan="5"><div class="empty">Loading…</div></td></tr></tbody>
@@ -280,7 +286,10 @@
       <span class="card-title">Weekly Working Hours by Teacher</span>
       <div class="card-meta"><span class="c-badge" id="cnt-av">—</span><span class="spin on" id="sp-av"></span></div>
     </div>
+    <div class="tbl-btns"><button class="tbl-btn" onclick="scrollTbl('ts-av',-200)">↑ Up</button><button class="tbl-btn" onclick="scrollTbl('ts-av',200)">↓ Down</button></div>
+    <div id="ts-av" style="max-height:480px;overflow-y:auto;">
     <div id="av-body"><div class="empty" style="padding:36px">Loading availability…</div></div>
+    </div>
   </div>
 
 </div>
@@ -321,6 +330,7 @@ const stopSpin  = id => { const e = g(id); if (e) e.classList.remove('on'); };
 const startSpin = id => { const e = g(id); if (e) e.classList.add('on'); };
 const setErr    = (id, msg) => { const e = g(id); if (!e) return; if (msg) { e.textContent='⚠ '+msg; e.classList.add('on'); } else e.classList.remove('on'); };
 const emptyRow  = (id, cols, msg='No data') => { g(id).innerHTML=`<tr><td colspan="${cols}"><div class="empty">${msg}</div></td></tr>`; };
+function scrollTbl(id, delta) { const el = document.getElementById(id); if (el) el.scrollBy({ top: delta, behavior: 'smooth' }); }
 
 async function loadAll() {
   ['sp-links','sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av'].forEach(startSpin);
@@ -409,12 +419,16 @@ async function loadAll() {
     } else if (!W.transactions.items?.length) {
       emptyRow('tb-txn', 4, 'No transactions found');
     } else {
-      g('tb-txn').innerHTML = W.transactions.items.map(t=>`<tr>
-        <td class="ta">${t.amount!=null?'₹'+fmtR(t.amount):'—'}</td>
-        <td class="tm">${fmtD(t.createdAt||t.date||t.timestamp)}</td>
+      g('tb-txn').innerHTML = W.transactions.items.map(t=>{
+        const amt = t.amount?.value != null ? '₹'+fmtR(t.amount.value/100) : '—';
+        const cur = t.amount?.currency || '';
+        return `<tr>
+        <td class="ta">${amt}<span class="tm"> ${cur}</span></td>
+        <td class="tm">${fmtD(t.chargedAt||t.createdAt||t.date)}</td>
         <td>${bdg(t.status||t.state)}</td>
-        <td>${bdg(t.method||t.type||t.transactionType||t.category)}</td>
-      </tr>`).join('');
+        <td>${bdg(t.type||t.method||t.transactionType)}</td>
+        </tr>`;
+      }).join('');
     }
     stopSpin('sp-txn');
 
