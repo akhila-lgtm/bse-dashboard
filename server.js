@@ -85,15 +85,14 @@ async function getTeacherAvailability(teachers) {
 
 async function getWiseData() {
   // Fetch all core data in parallel (page_size=100 for table display; counts come from response fields)
-  const [stuRes, tchRes, sesFutureRes, sesPastRes, clsRes, txnRes] = await Promise.all([
+  const [stuRes, tchRes, sesFutureRes, sesPastRes, clsRes] = await Promise.all([
     wiseGet(`/institutes/${INST}/students?status=ACCEPTED&paginateBy=COUNT&page_size=100&page_number=1`),
     wiseGet(`/institutes/${INST}/teachers?paginateBy=COUNT&page_size=100&page_number=1`),
     // status=FUTURE → upcoming sessions (totalRecords = true upcoming count)
     wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&status=FUTURE&page_size=100&page_number=1`),
-    // status=PAST → past sessions for the Past tab
+    // status=PAST → past sessions for funnel chart + tabs
     wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&status=PAST&page_size=500&page_number=1`),
-    wiseGet(`/institutes/${INST}/classes?paginateBy=COUNT&page_size=50&page_number=1`),
-    wiseGet(`/institutes/${INST}/transactions?paginateBy=COUNT&page_number=1&page_size=100`),
+    wiseGet(`/institutes/${INST}/classes?page_size=50&page_number=1`),
   ]);
 
   // Confirmed count field names per endpoint (from live API inspection):
@@ -114,8 +113,15 @@ async function getWiseData() {
 
   const stuRaw     = parse(stuRes, 'students');
   const tchRaw     = parse(tchRes, 'teachers');
-  const coursesRaw = parse(clsRes, 'classes', 'classesCount');
-  const transactions = parse(txnRes, 'transactions');
+
+  // Courses: response is { data: [...] } — data field is the array directly
+  const clsInner = clsRes.raw?.data;
+  const clsArr   = Array.isArray(clsInner) ? clsInner : [];
+  const coursesRaw = {
+    count: clsArr.length,
+    items: clsArr,
+    error: clsRes.ok ? null : clsRes.error,
+  };
 
   // Sessions: FUTURE (upcoming) + PAST fetched separately for accurate counts
   const sesFuture = parse(sesFutureRes, 'sessions', 'totalRecords'); // upcomingCount = totalRecords
@@ -176,15 +182,16 @@ async function getWiseData() {
     })),
   };
 
-  // Courses — map fields for table display
+  // Courses — field names from live API: type, joinedRequest (array), hidden (boolean)
+  const TYPE_MAP = { ONE_TO_ONE: '1:1', GROUP: 'Group', WEBINAR: 'Webinar' };
   const courses = {
     ...coursesRaw,
     items: coursesRaw.items.map(c => ({
-      name:         c.name    || c.title   || '—',
-      subject:      c.subject              || '—',
-      status:       c.status               || '—',
-      classType:    { ONE_TO_ONE: '1:1', GROUP: 'Group', WEBINAR: 'Webinar' }[c.classType] || c.classType || '—',
-      enrolledCount: c.enrolledCount ?? c.studentCount ?? c.currentEnrolledCount ?? 0,
+      name:         c.name    || '—',
+      subject:      c.subject || '—',
+      classType:    TYPE_MAP[c.type] || c.type || '—',
+      enrolledCount: Array.isArray(c.joinedRequest) ? c.joinedRequest.length : 0,
+      status:       c.hidden ? 'Hidden' : 'Active',
     })),
   };
 
@@ -193,7 +200,7 @@ async function getWiseData() {
     ? []
     : await getTeacherAvailability(teachers.items);
 
-  return { students, teachers, sessions, courses, transactions, availability };
+  return { students, teachers, sessions, courses, availability };
 }
 
 async function getRazorpayLinks(from, to) {

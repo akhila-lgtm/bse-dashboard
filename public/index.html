@@ -584,31 +584,6 @@
     </div>
   </div>
 
-  <!-- ── PLATFORM TRANSACTIONS ── -->
-  <div class="sec fi">
-    <div class="sec-ico y">💸</div>
-    <span class="sec-lbl">Platform Transactions</span>
-    <span class="sec-tag tag-y">Wise</span>
-    <div class="sec-line"></div>
-  </div>
-  <div class="g1 fi-1">
-    <div class="card">
-      <div class="card-hdr">
-        <span class="card-title">Platform Transactions</span>
-        <div class="card-meta"><span class="c-badge" id="cnt-txn">—</span><span class="spin on" id="sp-txn"></span></div>
-      </div>
-      <div class="tbl-btns">
-        <button class="tbl-btn" onclick="scrollTbl('ts-txn',-200)">↑ Up</button>
-        <button class="tbl-btn" onclick="scrollTbl('ts-txn',200)">↓ Down</button>
-      </div>
-      <div class="ts" id="ts-txn">
-        <table>
-          <thead><tr><th>Amount</th><th>Date</th><th>Status</th><th>Method / Type</th></tr></thead>
-          <tbody id="tb-txn"><tr><td colspan="4"><div class="empty">Loading…</div></td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 
 </div>
 <footer>Last updated: <span id="last-upd">—</span> &nbsp;·&nbsp; Brightside English © 2026</footer>
@@ -857,7 +832,7 @@ function renderTeachersTable(teachers, availability) {
 
 /* ── loadAll ── */
 async function loadAll() {
-  ['sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av','sp-students','sp-courses'].forEach(startSpin);
+  ['sp-rzp-txn','sp-sessions','sp-teachers','sp-av','sp-students','sp-courses'].forEach(startSpin);
   loadLinks(linksPreset);
   try {
     const res = await fetch('/api/all');
@@ -909,23 +884,6 @@ async function loadAll() {
 
     /* Today's KPIs */
     computeTodayKPIs();
-
-    /* Transactions */
-    g('cnt-txn').textContent = fmtN(W.transactions.count)+' total';
-    if (W.transactions.error) { emptyRow('tb-txn',4,W.transactions.error); }
-    else if (!W.transactions.items?.length) { emptyRow('tb-txn',4,'No transactions'); }
-    else {
-      g('tb-txn').innerHTML = W.transactions.items.map(t=>{
-        const amt = t.amount?.value!=null?'₹'+fmtR(t.amount.value/100):'—';
-        return `<tr>
-          <td class="ta">${amt}<span class="tm"> ${t.amount?.currency||''}</span></td>
-          <td class="tm">${fmtD(t.chargedAt||t.createdAt||t.date)}</td>
-          <td>${bdg(t.status||t.state)}</td>
-          <td>${bdg(t.type||t.method||t.transactionType)}</td>
-        </tr>`;
-      }).join('');
-    }
-    stopSpin('sp-txn');
 
     /* Teachers (merged with availability) */
     g('cnt-teachers').textContent = fmtN(W.teachers.count)+' teachers';
@@ -982,7 +940,7 @@ async function loadAll() {
 
   } catch(err) {
     console.error(err);
-    ['sp-rzp-txn','sp-sessions','sp-txn','sp-teachers','sp-av','sp-students','sp-courses'].forEach(stopSpin);
+    ['sp-rzp-txn','sp-sessions','sp-teachers','sp-av','sp-students','sp-courses'].forEach(stopSpin);
   }
 }
 
