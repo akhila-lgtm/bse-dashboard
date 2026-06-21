@@ -91,7 +91,7 @@ async function getWiseData() {
     // status=FUTURE → upcoming sessions (totalRecords = true upcoming count)
     wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&status=FUTURE&page_size=100&page_number=1`),
     // status=PAST → past sessions for the Past tab
-    wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&status=PAST&page_size=100&page_number=1`),
+    wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&status=PAST&page_size=500&page_number=1`),
     wiseGet(`/institutes/${INST}/classes?paginateBy=COUNT&page_size=50&page_number=1`),
     wiseGet(`/institutes/${INST}/transactions?paginateBy=COUNT&page_number=1&page_size=100`),
   ]);
@@ -112,9 +112,9 @@ async function getWiseData() {
     return { count, items: arr, error: null };
   }
 
-  const stuRaw  = parse(stuRes, 'students');                          // count = arr.length
-  const tchRaw  = parse(tchRes, 'teachers');                          // count = arr.length
-  const courses = parse(clsRes, 'classes', 'classesCount');           // count = data.classesCount
+  const stuRaw     = parse(stuRes, 'students');
+  const tchRaw     = parse(tchRes, 'teachers');
+  const coursesRaw = parse(clsRes, 'classes', 'classesCount');
   const transactions = parse(txnRes, 'transactions');
 
   // Sessions: FUTURE (upcoming) + PAST fetched separately for accurate counts
@@ -172,6 +172,19 @@ async function getWiseData() {
       email:    s.userId?.email       || '—',
       contact:  s.userId?.phoneNumber || '—',
       status:   s.status              || '—',
+      joinedOn: s.joinedOn            || null,
+    })),
+  };
+
+  // Courses — map fields for table display
+  const courses = {
+    ...coursesRaw,
+    items: coursesRaw.items.map(c => ({
+      name:         c.name    || c.title   || '—',
+      subject:      c.subject              || '—',
+      status:       c.status               || '—',
+      classType:    { ONE_TO_ONE: '1:1', GROUP: 'Group', WEBINAR: 'Webinar' }[c.classType] || c.classType || '—',
+      enrolledCount: c.enrolledCount ?? c.studentCount ?? c.currentEnrolledCount ?? 0,
     })),
   };
 
