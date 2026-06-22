@@ -923,7 +923,8 @@ function renderStudentProgress(allSessions, students) {
     });
   });
 
-  const rows = Object.values(map).sort((a,b) => b.total - a.total);
+  const toMs = v => !v ? 0 : (typeof v==='number' ? v*1000 : new Date(v).getTime());
+  const rows = Object.values(map).sort((a,b) => toMs(joinedMap[b.student]) - toMs(joinedMap[a.student]));
   g('cnt-progress').textContent = rows.length + ' records';
 
   if (!rows.length) { emptyRow('tb-progress', 8, 'No session data available'); return; }
