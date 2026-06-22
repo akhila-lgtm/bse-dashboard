@@ -35,11 +35,22 @@ function todayRange() {
   return { from: Math.floor(s / 1000), to: Math.floor(s / 1000) + 86400 };
 }
 
-async function wiseGet(urlPath) {
+async function wiseGet(urlPath, debug = false) {
+  const fullUrl = `${WISE_BASE}${urlPath}`;
   try {
-    const r = await axios.get(`${WISE_BASE}${urlPath}`, { headers: WISE_HEADERS });
+    const r = await axios.get(fullUrl, { headers: WISE_HEADERS });
+    if (debug) {
+      console.log('[DEBUG] URL:', fullUrl);
+      console.log('[DEBUG] Status:', r.status);
+      console.log('[DEBUG] Body:', JSON.stringify(r.data).slice(0, 500));
+    }
     return { ok: true, raw: r.data };
   } catch (e) {
+    if (debug) {
+      console.log('[DEBUG] URL:', fullUrl);
+      console.log('[DEBUG] Error status:', e.response?.status);
+      console.log('[DEBUG] Error body:', JSON.stringify(e.response?.data).slice(0, 500));
+    }
     return { ok: false, error: e.response?.data?.message || e.message, raw: null };
   }
 }
@@ -86,7 +97,7 @@ async function getTeacherAvailability(teachers) {
 async function getWiseData() {
   // Fetch all core data in parallel (page_size=100 for table display; counts come from response fields)
   const [stuRes, tchRes, sesFutureRes, sesPastRes, clsRes] = await Promise.all([
-    wiseGet(`/institutes/${INST}/students?status=ACCEPTED&paginateBy=COUNT&page_size=100&page_number=1`),
+    wiseGet(`/institutes/${INST}/students?status=ACCEPTED&paginateBy=COUNT&page_size=100&page_number=1`, true),
     wiseGet(`/institutes/${INST}/teachers?paginateBy=COUNT&page_size=100&page_number=1`),
     // status=FUTURE → upcoming sessions (totalRecords = true upcoming count)
     wiseGet(`/institutes/${INST}/sessions?paginateBy=COUNT&status=FUTURE&page_size=100&page_number=1`),
