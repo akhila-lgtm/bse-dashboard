@@ -900,15 +900,15 @@ async function loadAll() {
       if(obj.error){g(valId).innerHTML=`<span style="color:var(--red);font-size:.9rem">ERR</span>`;errs.push(obj.error);}
       else{g(valId).textContent=override!=null?fmtN(override):fmtN(obj.count);if(subId)g(subId).textContent=sub||'';}
     }
-    setKpi('k-students','k-students-sub',W.students,null,`${fmtN(W.students.items?.length)} loaded`);
-    setKpi('k-teachers','k-teachers-sub',W.teachers,null,`${fmtN(W.teachers.items?.length)} loaded`);
-    setKpi('k-courses', 'k-courses-sub', W.courses,  null,`${fmtN(W.courses.items?.length)} loaded`);
+    setKpi('k-students','k-students-sub',W.students, W.students.count,  `${fmtN(W.students.count)} enrolled`);
+    setKpi('k-teachers','k-teachers-sub',W.teachers, W.teachers.count,  `${fmtN(W.teachers.count)} tutors`);
+    setKpi('k-courses', 'k-courses-sub', W.courses,  W.courses.count,   `${fmtN(W.courses.count)} courses`);
     if (W.sessions.error) {
       g('k-sessions').innerHTML=`<span style="color:var(--red);font-size:.9rem">ERR</span>`;
       errs.push(W.sessions.error);
     } else {
       g('k-sessions').textContent     = fmtN(W.sessions.upcomingCount);
-      g('k-sessions-sub').textContent = `of ${fmtN(W.sessions.totalCount)} total`;
+      g('k-sessions-sub').textContent = `${fmtN(W.sessions.pastCount)} past · ${fmtN(W.sessions.totalCount)} total`;
     }
     setErr('wise-err', errs.length ? [...new Set(errs)].join(' · ') : null);
 
