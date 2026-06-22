@@ -828,23 +828,27 @@ function renderSessions(tab) {
   }).join('');
 }
 
+/* ── IST date helpers ── */
+const istDate = t => new Date(t).toLocaleDateString('en-CA', {timeZone:'Asia/Kolkata'});
+const todayIST = () => new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Kolkata'});
+function filterToday(sessions) {
+  const today = todayIST();
+  return sessions.filter(s => s.scheduledStartTime && istDate(s.scheduledStartTime) === today);
+}
+
 /* ── Today KPIs from sessions ── */
 function computeTodayKPIs() {
-  const todayStr = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-  const all = [...window._sesUpcoming, ...window._sesPast];
-  const today = all.filter(s => {
-    if (!s.scheduledStartTime) return false;
-    return new Date(s.scheduledStartTime).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) === todayStr;
-  });
+  const all   = [...window._sesUpcoming, ...window._sesPast];
+  const today = filterToday(all);
   const live      = all.filter(s=>s.meetingStatus==='LIVE').length;
   const completed = today.filter(s=>s.meetingStatus==='ENDED').length;
   const cancelled = today.filter(s=>s.meetingStatus==='CANCELLED').length;
   const missed    = today.filter(s=>s.meetingStatus==='MISSED').length;
-  countUp(g('k-today-total'),    today.length, '','',0);
-  countUp(g('k-live-now'),       live,         '','',0);
-  countUp(g('k-completed-today'),completed,    '','',0);
-  countUp(g('k-cancelled-today'),cancelled+missed,'','',0);
-  g('k-today-sub').textContent       = `${today.length} in loaded items`;
+  countUp(g('k-today-total'),    today.length,       '','',0);
+  countUp(g('k-live-now'),       live,               '','',0);
+  countUp(g('k-completed-today'),completed,          '','',0);
+  countUp(g('k-cancelled-today'),cancelled+missed,   '','',0);
+  g('k-today-sub').textContent        = `${today.length} in loaded items`;
   g('k-missed-today-sub').textContent = `${cancelled} cancelled, ${missed} missed`;
 }
 
@@ -1185,14 +1189,10 @@ function renderCharts(d) {
       </div>`).join('')
     : '<span style="color:var(--muted);font-size:.72rem">No course data</span>';
 
-  /* Today's summary (re-use computeTodayKPIs data) */
-  const todayStr2 = now2.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-  const todayAll  = [...window._sesUpcoming, ...window._sesPast].filter(s =>
-    s.scheduledStartTime &&
-    new Date(s.scheduledStartTime).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) === todayStr2
-  );
+  /* Today's summary — IST date, same logic as computeTodayKPIs */
+  const todayAll  = filterToday([...window._sesUpcoming, ...window._sesPast]);
   g('la-today-comp').textContent = todayAll.filter(s=>s.meetingStatus==='ENDED').length;
-  g('la-today-up').textContent   = todayAll.filter(s=>s.meetingStatus==='UPCOMING'||s.meetingStatus==='—').length;
+  g('la-today-up').textContent   = todayAll.filter(s=>s.meetingStatus==='UPCOMING'||s.meetingStatus==='IN_PROGRESS').length;
   g('la-today-miss').textContent = todayAll.filter(s=>s.meetingStatus==='MISSED').length;
   g('la-today-can').textContent  = todayAll.filter(s=>s.meetingStatus==='CANCELLED').length;
 
