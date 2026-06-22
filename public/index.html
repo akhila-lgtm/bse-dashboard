@@ -532,53 +532,55 @@
     </div>
   </div>
 
-  <!-- ── STUDENTS ── -->
+  <!-- ── LEARNER ANALYTICS ── -->
   <div class="sec fi">
-    <div class="sec-ico c">👩‍🎓</div>
-    <span class="sec-lbl">Students / Learners</span>
-    <span class="sec-tag tag-c">Enrolled</span>
+    <div class="sec-ico p">📊</div>
+    <span class="sec-lbl">Learner Analytics</span>
+    <span class="sec-tag tag-c">Insights</span>
     <div class="sec-line"></div>
   </div>
-  <div class="g1 fi-1">
-    <div class="card">
-      <div class="card-hdr">
-        <span class="card-title">Students</span>
-        <div class="card-meta"><span class="c-badge" id="cnt-students">—</span><span class="spin on" id="sp-students"></span></div>
-      </div>
-      <div class="tbl-btns">
-        <button class="tbl-btn" onclick="scrollTbl('ts-students',-200)">↑ Up</button>
-        <button class="tbl-btn" onclick="scrollTbl('ts-students',200)">↓ Down</button>
-      </div>
-      <div class="ts tall" id="ts-students">
-        <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Joined Date</th></tr></thead>
-          <tbody id="tb-students"><tr><td colspan="5"><div class="empty">Loading…</div></td></tr></tbody>
-        </table>
-      </div>
+  <div class="chart-grid fi-1">
+    <div class="chart-card">
+      <div class="chart-title">Top 10 Courses by Enrollment</div>
+      <div class="chart-wrap tall"><canvas id="chart-courses-enrollment"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Session Status Breakdown</div>
+      <div class="chart-wrap tall"><canvas id="chart-session-status"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid fi-2">
+    <div class="chart-card">
+      <div class="chart-title">New Learners Joined — Last 6 Months</div>
+      <div class="chart-wrap tall"><canvas id="chart-new-learners"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Top 10 Tutors by Session Count</div>
+      <div class="chart-wrap tall"><canvas id="chart-top-tutors"></canvas></div>
     </div>
   </div>
 
-  <!-- ── COURSES ── -->
-  <div class="sec fi">
-    <div class="sec-ico p">📚</div>
-    <span class="sec-lbl">Courses</span>
-    <span class="sec-tag tag-c">Catalogue</span>
+  <!-- ── STUDENT PROGRESS ── -->
+  <div class="sec fi-3">
+    <div class="sec-ico c">📋</div>
+    <span class="sec-lbl">Student Progress</span>
+    <span class="sec-tag tag-c">From Loaded Sessions</span>
     <div class="sec-line"></div>
   </div>
-  <div class="g1 fi-1">
+  <div class="g1 fi-3">
     <div class="card">
       <div class="card-hdr">
-        <span class="card-title">Courses</span>
-        <div class="card-meta"><span class="c-badge" id="cnt-courses">—</span><span class="spin on" id="sp-courses"></span></div>
+        <span class="card-title">Student Progress</span>
+        <div class="card-meta"><span class="c-badge" id="cnt-progress">—</span><span class="spin on" id="sp-progress"></span></div>
       </div>
       <div class="tbl-btns">
-        <button class="tbl-btn" onclick="scrollTbl('ts-courses',-200)">↑ Up</button>
-        <button class="tbl-btn" onclick="scrollTbl('ts-courses',200)">↓ Down</button>
+        <button class="tbl-btn" onclick="scrollTbl('ts-progress',-200)">↑ Up</button>
+        <button class="tbl-btn" onclick="scrollTbl('ts-progress',200)">↓ Down</button>
       </div>
-      <div class="ts tall" id="ts-courses">
+      <div class="ts tall" id="ts-progress">
         <table>
-          <thead><tr><th>Course Name</th><th>Subject</th><th>Type</th><th>Enrolled</th><th>Status</th></tr></thead>
-          <tbody id="tb-courses"><tr><td colspan="5"><div class="empty">Loading…</div></td></tr></tbody>
+          <thead><tr><th>Student Name</th><th>Course Name</th><th>Tutor</th><th>Joined Date</th><th>Total Sessions</th><th>Completed</th><th>Missed</th><th>Cancelled</th></tr></thead>
+          <tbody id="tb-progress"><tr><td colspan="8"><div class="empty">Loading…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -830,9 +832,46 @@ function renderTeachersTable(teachers, availability) {
   }).join('');
 }
 
+/* ── Student Progress table ── */
+function renderStudentProgress(allSessions, students) {
+  // Build joinedOn lookup by name from students list
+  const joinedMap = {};
+  students.forEach(s => { if (s.name && s.name !== '—') joinedMap[s.name] = s.joinedOn; });
+
+  // Group sessions by student+course key
+  const map = {};
+  allSessions.forEach(s => {
+    (s.students || []).forEach(stuName => {
+      const key = stuName + '|||' + (s.course || 'Session');
+      if (!map[key]) map[key] = { student: stuName, course: s.course || 'Session', tutor: s.instructor || '—', total: 0, completed: 0, missed: 0, cancelled: 0 };
+      map[key].total++;
+      if (s.meetingStatus === 'ENDED')     map[key].completed++;
+      else if (s.meetingStatus === 'MISSED')    map[key].missed++;
+      else if (s.meetingStatus === 'CANCELLED') map[key].cancelled++;
+      if (s.instructor && s.instructor !== '—') map[key].tutor = s.instructor;
+    });
+  });
+
+  const rows = Object.values(map).sort((a,b) => b.total - a.total);
+  g('cnt-progress').textContent = rows.length + ' records';
+
+  if (!rows.length) { emptyRow('tb-progress', 8, 'No session data available'); return; }
+
+  g('tb-progress').innerHTML = rows.map(r => `<tr>
+    <td><b>${r.student}</b></td>
+    <td class="tm">${r.course}</td>
+    <td class="tm">${r.tutor}</td>
+    <td class="tm">${joinedMap[r.student] ? fmtD(joinedMap[r.student]) : '—'}</td>
+    <td style="font-weight:700;color:var(--cyan)">${r.total}</td>
+    <td style="color:#4ade80;font-weight:600">${r.completed}</td>
+    <td style="color:#f87171;font-weight:600">${r.missed}</td>
+    <td style="color:var(--accent);font-weight:600">${r.cancelled}</td>
+  </tr>`).join('');
+}
+
 /* ── loadAll ── */
 async function loadAll() {
-  ['sp-rzp-txn','sp-sessions','sp-teachers','sp-av','sp-students','sp-courses'].forEach(startSpin);
+  ['sp-rzp-txn','sp-sessions','sp-teachers','sp-av','sp-progress'].forEach(startSpin);
   loadLinks(linksPreset);
   try {
     const res = await fetch('/api/all');
@@ -891,35 +930,9 @@ async function loadAll() {
     else { renderTeachersTable(W.teachers, d.wise.availability); }
     stopSpin('sp-teachers');
 
-    /* Students */
-    g('cnt-students').textContent = fmtN(W.students.count)+' students';
-    if (W.students.error) { emptyRow('tb-students',5,W.students.error); }
-    else if (!W.students.items?.length) { emptyRow('tb-students',5,'No students found'); }
-    else {
-      g('tb-students').innerHTML = W.students.items.map(s=>`<tr>
-        <td><b>${s.name}</b></td>
-        <td class="tm">${s.email}</td>
-        <td class="tm">${s.contact||'—'}</td>
-        <td>${bdg(s.status)}</td>
-        <td class="tm">${fmtD(s.joinedOn)}</td>
-      </tr>`).join('');
-    }
-    stopSpin('sp-students');
-
-    /* Courses */
-    g('cnt-courses').textContent = fmtN(W.courses.count)+' courses';
-    if (W.courses.error) { emptyRow('tb-courses',5,W.courses.error); }
-    else if (!W.courses.items?.length) { emptyRow('tb-courses',5,'No courses found'); }
-    else {
-      g('tb-courses').innerHTML = W.courses.items.map(c=>`<tr>
-        <td><b>${c.name}</b></td>
-        <td class="tm">${c.subject||'—'}</td>
-        <td>${c.classType ? `<span class="bdg bg-blue">${c.classType}</span>` : '—'}</td>
-        <td><span style="color:var(--cyan);font-weight:700">${c.enrolledCount||0}</span></td>
-        <td>${bdg(c.status)}</td>
-      </tr>`).join('');
-    }
-    stopSpin('sp-courses');
+    /* Student Progress table (derived from loaded sessions) */
+    renderStudentProgress([...window._sesUpcoming, ...window._sesPast], W.students.items || []);
+    stopSpin('sp-progress');
 
     /* Availability table */
     window._avData = d.wise.availability || [];
@@ -940,7 +953,7 @@ async function loadAll() {
 
   } catch(err) {
     console.error(err);
-    ['sp-rzp-txn','sp-sessions','sp-teachers','sp-av','sp-students','sp-courses'].forEach(stopSpin);
+    ['sp-rzp-txn','sp-sessions','sp-teachers','sp-av','sp-progress'].forEach(stopSpin);
   }
 }
 
@@ -1066,6 +1079,69 @@ function renderCharts(d) {
     type:'doughnut',
     data:{ labels:stLabels, datasets:[{data:stLabels.map(k=>stC[k]), backgroundColor:stLabels.map(k=>stColors[k]), borderWidth:2, borderColor:'#1a1d2e', hoverOffset:10}] },
     options:{ responsive:true, maintainAspectRatio:false, cutout:'60%', plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}}} }
+  });
+
+  /* ── Learner Analytics charts ── */
+
+  /* 6. Top 10 courses by enrollment */
+  const courses = d.wise?.courses?.items || [];
+  const topCourses = [...courses].sort((a,b)=>(b.enrolledCount||0)-(a.enrolledCount||0)).slice(0,10);
+  mkChart('chart-courses-enrollment',{
+    type:'bar',
+    data:{
+      labels: topCourses.map(c=>c.name.length>28?c.name.slice(0,26)+'…':c.name),
+      datasets:[{ data:topCourses.map(c=>c.enrolledCount||0),
+        backgroundColor:PALETTE, borderRadius:5, borderWidth:0 }]
+    },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales:{ x:{grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}, y:{grid:{display:false}} },
+      plugins:{legend:{display:false}} }
+  });
+
+  /* 7. Session status breakdown donut (Learner Analytics copy) */
+  mkChart('chart-session-status',{
+    type:'doughnut',
+    data:{ labels:stLabels, datasets:[{data:stLabels.map(k=>stC[k]), backgroundColor:stLabels.map(k=>stColors[k]), borderWidth:2, borderColor:'#1a1d2e', hoverOffset:10}] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}}} }
+  });
+
+  /* 8. New learners joined per month (last 6 months) */
+  const months6 = [];
+  for (let i=5;i>=0;i--) {
+    const d2=new Date(); d2.setDate(1); d2.setMonth(d2.getMonth()-i);
+    months6.push({ label:d2.toLocaleDateString('en-IN',{month:'short',year:'2-digit'}), y:d2.getFullYear(), m:d2.getMonth() });
+  }
+  const learnerCounts = months6.map(()=>0);
+  (d.wise?.students?.items||[]).forEach(s=>{
+    if (!s.joinedOn) return;
+    const jd = typeof s.joinedOn==='number' ? new Date(s.joinedOn*1000) : new Date(s.joinedOn);
+    if (isNaN(jd)) return;
+    const idx = months6.findIndex(m=>m.y===jd.getFullYear()&&m.m===jd.getMonth());
+    if (idx>=0) learnerCounts[idx]++;
+  });
+  mkChart('chart-new-learners',{
+    type:'line',
+    data:{
+      labels:months6.map(m=>m.label),
+      datasets:[{ data:learnerCounts, borderColor:C.yellow, backgroundColor:C.yellow+'22',
+        borderWidth:2, pointRadius:5, pointBackgroundColor:C.yellow, fill:true, tension:0.4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{grid:{display:false}}, y:{grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true,ticks:{stepSize:1}} },
+      plugins:{legend:{display:false}} }
+  });
+
+  /* 9. Top 10 tutors by session count */
+  mkChart('chart-top-tutors',{
+    type:'bar',
+    data:{
+      labels: tchSorted.map(e=>e[0]),
+      datasets:[{ data:tchSorted.map(e=>e[1]), backgroundColor:PALETTE, borderRadius:5, borderWidth:0 }]
+    },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales:{ x:{grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}, y:{grid:{display:false}} },
+      plugins:{legend:{display:false}} }
   });
 }
 </script>
