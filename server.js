@@ -260,6 +260,16 @@ function rangeFor(preset) {
   return { from: sod - 6*86400, to: sod + 86400 }; // default: 7 days
 }
 
+app.get('/api/debug', (req, res) => {
+  res.json({
+    razorpay_key:      process.env.RAZORPAY_KEY_ID     ? 'SET' : 'NOT SET',
+    wise_api_key:      process.env.WISE_API_KEY         ? 'SET' : 'NOT SET',
+    wise_institute_id: process.env.WISE_INSTITUTE_ID   || 'NOT SET',
+    wise_user_id:      process.env.WISE_USER_ID         ? 'SET' : 'NOT SET',
+    node_env:          process.env.NODE_ENV,
+  });
+});
+
 app.get('/api/links', async (req, res) => {
   const from   = req.query.from   ? parseInt(req.query.from)  : null;
   const to     = req.query.to     ? parseInt(req.query.to)    : null;
