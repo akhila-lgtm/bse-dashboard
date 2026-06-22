@@ -261,6 +261,40 @@
     .chart-wrap      { position:relative; height:220px; }
     .chart-wrap.tall { height:300px; }
 
+    /* ── LEARNER ANALYTICS PANEL ── */
+    .la-panel { display:flex; flex-direction:column; gap:0; padding:0 !important; overflow:hidden; }
+    .la-sec { padding:16px 18px; border-bottom:1px solid var(--b1); }
+    .la-sec-last { border-bottom:none; flex:1; }
+    .la-sec-hdr { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:12px; }
+    .la-stats-row { display:flex; gap:0; }
+    .la-stat { flex:1; text-align:center; padding:4px 0; }
+    .la-stat-val { font-size:1.5rem; font-weight:800; line-height:1; letter-spacing:-.03em; color:var(--t1); }
+    .la-stat-val.accent { color:var(--accent); }
+    .la-stat-val.green  { color:#4ade80; }
+    .la-stat-lbl { font-size:.62rem; color:var(--muted); margin-top:4px; }
+    .la-course-row { display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.04); }
+    .la-course-row:last-child { border-bottom:none; }
+    .la-course-name { font-size:.75rem; font-weight:600; color:var(--t1); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .la-course-badge { font-size:.65rem; font-weight:700; background:rgba(6,182,212,.12); border:1px solid rgba(6,182,212,.25); color:var(--cyan); padding:2px 8px; border-radius:10px; white-space:nowrap; margin-left:8px; }
+    .la-today-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .la-today-item { background:rgba(255,255,255,.03); border:1px solid var(--b1); border-radius:8px; padding:10px 12px; text-align:center; }
+    .la-today-item.green  { border-color:rgba(34,197,94,.2); }
+    .la-today-item.blue   { border-color:rgba(59,130,246,.2); }
+    .la-today-item.red    { border-color:rgba(239,68,68,.2); }
+    .la-today-item.yellow { border-color:rgba(245,184,0,.2); }
+    .la-today-val { font-size:1.4rem; font-weight:800; line-height:1; }
+    .la-today-item.green  .la-today-val { color:#4ade80; }
+    .la-today-item.blue   .la-today-val { color:#60a5fa; }
+    .la-today-item.red    .la-today-val { color:#f87171; }
+    .la-today-item.yellow .la-today-val { color:var(--accent); }
+    .la-today-lbl { font-size:.6rem; color:var(--muted); margin-top:3px; }
+
+    /* ── 4-COLUMN CHART GRID ── */
+    .chart-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:16px 0; }
+    @media(max-width:900px){ .chart-grid-4{ grid-template-columns:repeat(2,1fr); } }
+    .chart-wrap.sm { height:140px; }
+    .rate-val { text-align:center; font-size:1.4rem; font-weight:800; color:var(--t1); margin-top:8px; letter-spacing:-.02em; }
+
     footer { text-align:center; padding:18px; color:var(--muted); font-size:.67rem; border-top:1px solid var(--b1); }
   </style>
 </head>
@@ -540,23 +574,60 @@
     <div class="sec-line"></div>
   </div>
   <div class="chart-grid fi-1">
+    <!-- LEFT: Weekly Session Activity bar chart -->
     <div class="chart-card">
-      <div class="chart-title">Top 10 Courses by Enrollment</div>
-      <div class="chart-wrap tall"><canvas id="chart-courses-enrollment"></canvas></div>
+      <div class="chart-title">Weekly Session Activity</div>
+      <div class="chart-wrap tall"><canvas id="chart-weekly-activity"></canvas></div>
     </div>
-    <div class="chart-card">
-      <div class="chart-title">Session Status Breakdown</div>
-      <div class="chart-wrap tall"><canvas id="chart-session-status"></canvas></div>
+    <!-- RIGHT: Stats panel split into 3 sections -->
+    <div class="chart-card la-panel">
+      <!-- Section 1: Learner counts -->
+      <div class="la-sec">
+        <div class="la-sec-hdr">🎓 Learners</div>
+        <div class="la-stats-row">
+          <div class="la-stat"><div class="la-stat-val" id="la-total-learners">—</div><div class="la-stat-lbl">Total</div></div>
+          <div class="la-stat"><div class="la-stat-val accent" id="la-new-month">—</div><div class="la-stat-lbl">New this month</div></div>
+          <div class="la-stat"><div class="la-stat-val green" id="la-active-week">—</div><div class="la-stat-lbl">Active this week</div></div>
+        </div>
+      </div>
+      <!-- Section 2: Top 5 Courses -->
+      <div class="la-sec">
+        <div class="la-sec-hdr">📚 Top 5 Courses</div>
+        <div id="la-top-courses"><div style="color:var(--muted);font-size:.72rem">Loading…</div></div>
+      </div>
+      <!-- Section 3: Today's Summary -->
+      <div class="la-sec la-sec-last">
+        <div class="la-sec-hdr">📈 Today's Summary</div>
+        <div class="la-today-grid">
+          <div class="la-today-item green"><div class="la-today-val" id="la-today-comp">—</div><div class="la-today-lbl">Completed</div></div>
+          <div class="la-today-item blue"><div class="la-today-val" id="la-today-up">—</div><div class="la-today-lbl">Upcoming</div></div>
+          <div class="la-today-item red"><div class="la-today-val" id="la-today-miss">—</div><div class="la-today-lbl">Missed</div></div>
+          <div class="la-today-item yellow"><div class="la-today-val" id="la-today-can">—</div><div class="la-today-lbl">Cancelled</div></div>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="chart-grid fi-2">
+  <!-- Full-width row: 4 small donut charts -->
+  <div class="chart-grid-4 fi-2">
     <div class="chart-card">
-      <div class="chart-title">New Learners Joined — Last 6 Months</div>
-      <div class="chart-wrap tall"><canvas id="chart-new-learners"></canvas></div>
+      <div class="chart-title">Completion Rate</div>
+      <div class="chart-wrap sm"><canvas id="chart-rate-completion"></canvas></div>
+      <div class="rate-val" id="rate-completion-val">—</div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Top 10 Tutors by Session Count</div>
-      <div class="chart-wrap tall"><canvas id="chart-top-tutors"></canvas></div>
+      <div class="chart-title">Cancellation Rate</div>
+      <div class="chart-wrap sm"><canvas id="chart-rate-cancellation"></canvas></div>
+      <div class="rate-val" id="rate-cancellation-val">—</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Missed Rate</div>
+      <div class="chart-wrap sm"><canvas id="chart-rate-missed"></canvas></div>
+      <div class="rate-val" id="rate-missed-val">—</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Active Tutors This Week</div>
+      <div class="chart-wrap sm"><canvas id="chart-active-tutors"></canvas></div>
+      <div class="rate-val" id="rate-active-tutors-val">—</div>
     </div>
   </div>
 
@@ -1081,67 +1152,115 @@ function renderCharts(d) {
     options:{ responsive:true, maintainAspectRatio:false, cutout:'60%', plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}}} }
   });
 
-  /* ── Learner Analytics charts ── */
+  /* ── Learner Analytics ── */
 
-  /* 6. Top 10 courses by enrollment */
-  const courses = d.wise?.courses?.items || [];
-  const topCourses = [...courses].sort((a,b)=>(b.enrolledCount||0)-(a.enrolledCount||0)).slice(0,10);
-  mkChart('chart-courses-enrollment',{
-    type:'bar',
-    data:{
-      labels: topCourses.map(c=>c.name.length>28?c.name.slice(0,26)+'…':c.name),
-      datasets:[{ data:topCourses.map(c=>c.enrolledCount||0),
-        backgroundColor:PALETTE, borderRadius:5, borderWidth:0 }]
-    },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      scales:{ x:{grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}, y:{grid:{display:false}} },
-      plugins:{legend:{display:false}} }
-  });
+  const allStudents = d.wise?.students?.items || [];
+  const courses     = d.wise?.courses?.items  || [];
 
-  /* 7. Session status breakdown donut (Learner Analytics copy) */
-  mkChart('chart-session-status',{
-    type:'doughnut',
-    data:{ labels:stLabels, datasets:[{data:stLabels.map(k=>stC[k]), backgroundColor:stLabels.map(k=>stColors[k]), borderWidth:2, borderColor:'#1a1d2e', hoverOffset:10}] },
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
-      plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}}} }
-  });
-
-  /* 8. New learners joined per month (last 6 months) */
-  const months6 = [];
-  for (let i=5;i>=0;i--) {
-    const d2=new Date(); d2.setDate(1); d2.setMonth(d2.getMonth()-i);
-    months6.push({ label:d2.toLocaleDateString('en-IN',{month:'short',year:'2-digit'}), y:d2.getFullYear(), m:d2.getMonth() });
-  }
-  const learnerCounts = months6.map(()=>0);
-  (d.wise?.students?.items||[]).forEach(s=>{
+  /* Learner stat cards */
+  const now2 = new Date();
+  const thisMonth = now2.getMonth(), thisYear = now2.getFullYear();
+  const weekAgo = new Date(now2); weekAgo.setDate(now2.getDate() - 7);
+  let newThisMonth = 0;
+  allStudents.forEach(s => {
     if (!s.joinedOn) return;
     const jd = typeof s.joinedOn==='number' ? new Date(s.joinedOn*1000) : new Date(s.joinedOn);
-    if (isNaN(jd)) return;
-    const idx = months6.findIndex(m=>m.y===jd.getFullYear()&&m.m===jd.getMonth());
-    if (idx>=0) learnerCounts[idx]++;
+    if (!isNaN(jd) && jd.getFullYear()===thisYear && jd.getMonth()===thisMonth) newThisMonth++;
   });
-  mkChart('chart-new-learners',{
-    type:'line',
-    data:{
-      labels:months6.map(m=>m.label),
-      datasets:[{ data:learnerCounts, borderColor:C.yellow, backgroundColor:C.yellow+'22',
-        borderWidth:2, pointRadius:5, pointBackgroundColor:C.yellow, fill:true, tension:0.4 }]
-    },
-    options:{ responsive:true, maintainAspectRatio:false,
-      scales:{ x:{grid:{display:false}}, y:{grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true,ticks:{stepSize:1}} },
-      plugins:{legend:{display:false}} }
+  const activeThisWeek = new Set(
+    pastSes.filter(s => s.scheduledStartTime && new Date(s.scheduledStartTime) >= weekAgo)
+           .flatMap(s => s.students || [])
+  ).size;
+  g('la-total-learners').textContent = allStudents.length || '—';
+  g('la-new-month').textContent      = newThisMonth;
+  g('la-active-week').textContent    = activeThisWeek;
+
+  /* Top 5 courses */
+  const top5 = [...courses].sort((a,b)=>(b.enrolledCount||0)-(a.enrolledCount||0)).slice(0,5);
+  g('la-top-courses').innerHTML = top5.length
+    ? top5.map(c=>`<div class="la-course-row">
+        <span class="la-course-name">${c.name}</span>
+        <span class="la-course-badge">${c.enrolledCount||0} enrolled</span>
+      </div>`).join('')
+    : '<span style="color:var(--muted);font-size:.72rem">No course data</span>';
+
+  /* Today's summary (re-use computeTodayKPIs data) */
+  const todayStr2 = now2.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const todayAll  = [...window._sesUpcoming, ...window._sesPast].filter(s =>
+    s.scheduledStartTime &&
+    new Date(s.scheduledStartTime).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) === todayStr2
+  );
+  g('la-today-comp').textContent = todayAll.filter(s=>s.meetingStatus==='ENDED').length;
+  g('la-today-up').textContent   = todayAll.filter(s=>s.meetingStatus==='UPCOMING'||s.meetingStatus==='—').length;
+  g('la-today-miss').textContent = todayAll.filter(s=>s.meetingStatus==='MISSED').length;
+  g('la-today-can').textContent  = todayAll.filter(s=>s.meetingStatus==='CANCELLED').length;
+
+  /* Weekly Session Activity stacked bar */
+  const week7 = [];
+  for (let i=6;i>=0;i--) week7.push(daysAgo(i).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}));
+  const wComp={}, wCan={}, wMiss={};
+  week7.forEach(day=>{wComp[day]=0;wCan[day]=0;wMiss[day]=0;});
+  pastSes.forEach(s=>{
+    if (!s.scheduledStartTime) return;
+    const lbl = new Date(s.scheduledStartTime).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    if (!(lbl in wComp)) return;
+    if (s.meetingStatus==='ENDED')          wComp[lbl]++;
+    else if (s.meetingStatus==='CANCELLED') wCan[lbl]++;
+    else if (s.meetingStatus==='MISSED')    wMiss[lbl]++;
+  });
+  mkChart('chart-weekly-activity',{
+    type:'bar',
+    data:{ labels:week7, datasets:[
+      {label:'Completed', data:week7.map(day=>wComp[day]), backgroundColor:'#00ff88cc', borderRadius:{topLeft:4,topRight:4,bottomLeft:0,bottomRight:0}, borderWidth:0},
+      {label:'Cancelled', data:week7.map(day=>wCan[day]),  backgroundColor:'#f5b800cc', borderWidth:0},
+      {label:'Missed',    data:week7.map(day=>wMiss[day]), backgroundColor:'#ff4444cc', borderWidth:0},
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{ stacked:true, grid:{display:false} },
+        y:{ stacked:true, grid:{color:'rgba(255,255,255,0.04)'}, beginAtZero:true, ticks:{stepSize:1} }
+      },
+      plugins:{
+        legend:{position:'bottom', labels:{color:'#94a3b8',boxWidth:12,padding:16}},
+        tooltip:{callbacks:{footer:items=>{const tot=items.reduce((s,i)=>s+i.raw,0);return tot?`Total: ${tot}`:''; }}}
+      }
+    }
   });
 
-  /* 9. Top 10 tutors by session count */
-  mkChart('chart-top-tutors',{
-    type:'bar',
-    data:{
-      labels: tchSorted.map(e=>e[0]),
-      datasets:[{ data:tchSorted.map(e=>e[1]), backgroundColor:PALETTE, borderRadius:5, borderWidth:0 }]
-    },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      scales:{ x:{grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}, y:{grid:{display:false}} },
-      plugins:{legend:{display:false}} }
+  /* 4 rate donuts */
+  const totalPast = pastSes.length || 1;
+  const compCount = stC.Completed || 0;
+  const canCount  = stC.Cancelled || 0;
+  const missCount = stC.Missed    || 0;
+
+  function mkRate(canvasId, valId, count, color, label) {
+    const pct = Math.round((count / totalPast) * 100);
+    g(valId).textContent = pct + '%';
+    mkChart(canvasId,{
+      type:'doughnut',
+      data:{ datasets:[{data:[pct, 100-pct], backgroundColor:[color,'rgba(255,255,255,0.05)'], borderWidth:0, hoverOffset:0}] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'70%',
+        plugins:{ legend:{display:false}, tooltip:{callbacks:{label:()=>label+': '+pct+'%'}} } }
+    });
+  }
+  mkRate('chart-rate-completion',   'rate-completion-val',   compCount, '#00ff88', 'Completion');
+  mkRate('chart-rate-cancellation', 'rate-cancellation-val', canCount,  '#f5b800', 'Cancellation');
+  mkRate('chart-rate-missed',       'rate-missed-val',       missCount, '#ff4444', 'Missed');
+
+  /* Active tutors this week donut */
+  const activeTutors = new Set(
+    pastSes.filter(s => s.scheduledStartTime && new Date(s.scheduledStartTime) >= weekAgo && s.instructor && s.instructor!=='—')
+           .map(s => s.instructor)
+  ).size;
+  const totalTutors = d.wise?.teachers?.count || 1;
+  const tutorPct = Math.round((activeTutors / totalTutors) * 100);
+  g('rate-active-tutors-val').textContent = activeTutors + ' / ' + totalTutors;
+  mkChart('chart-active-tutors',{
+    type:'doughnut',
+    data:{ datasets:[{data:[activeTutors, Math.max(0, totalTutors-activeTutors)], backgroundColor:[C.cyan,'rgba(255,255,255,0.05)'], borderWidth:0, hoverOffset:0}] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'70%',
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:()=>`Active: ${activeTutors} of ${totalTutors}`}} } }
   });
 }
 </script>
