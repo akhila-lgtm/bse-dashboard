@@ -369,7 +369,7 @@
     </div>
     <div class="kpi green">
       <div class="kpi-ico">✅</div>
-      <div class="kpi-lbl">Links Paid</div>
+      <div class="kpi-lbl">Payments Today</div>
       <div class="kpi-val" id="k-paid">—</div>
       <div class="kpi-sub" id="k-paid-sub"></div>
     </div>
@@ -735,10 +735,16 @@ async function loadLinks(preset=linksPreset) {
     const res = await fetch(`/api/links?preset=${preset}`);
     const d   = await res.json();
     const L   = d.links;
-    g('k-collected-sub').textContent = `from ${fmtN(L.paid)} paid link${L.paid!==1?'s':''}`;
-    g('k-paid-sub').textContent      = `₹${fmtR(L.collected)} collected`;
-    countUp(g('k-collected'),L.collected,'₹','',2);
-    countUp(g('k-paid'),    L.paid,    '','',0);
+    // Merge with today's captured payments
+    const captures = window._capturedPayments || [];
+    const capAmount = captures.filter(p=>p.status==='captured').reduce((s,p)=>s+(p.amount||0),0);
+    const capCount  = captures.filter(p=>p.status==='captured').length;
+    const totalCollected = L.collected + capAmount;
+    const totalPaid      = L.paid + capCount;
+    g('k-collected-sub').textContent = `₹${fmtR(L.collected)} links · ₹${fmtR(capAmount)} captures`;
+    g('k-paid-sub').textContent      = `${fmtN(L.paid)} links + ${fmtN(capCount)} captures`;
+    countUp(g('k-collected'), totalCollected, '₹','',2);
+    countUp(g('k-paid'),      totalPaid,      '','',0);
     countUp(g('k-pending'), L.pending, '','',0);
     countUp(g('k-total'),   L.total,   '','',0);
     g('cnt-links').textContent = fmtN(L.total)+' links';
@@ -758,10 +764,11 @@ async function loadLinks(preset=linksPreset) {
 }
 
 /* ── Sessions state ── */
-window._sesUpcoming = [];
-window._sesPast     = [];
-window._sesTab      = 'upcoming';
-window._avData      = [];
+window._sesUpcoming      = [];
+window._sesPast          = [];
+window._sesTab           = 'upcoming';
+window._avData           = [];
+window._capturedPayments = [];
 
 function sesBadge(status) {
   switch(status) {
@@ -955,6 +962,7 @@ async function loadAll() {
 
     /* Razorpay payments */
     const P = d.razorpay.payments;
+    window._capturedPayments = P.payments || [];
     g('cnt-rzp-txn').textContent = fmtN(P.payments?.length||0)+' txns';
     if (!P.payments?.length) {
       emptyRow('tb-rzp-txn',5,'No captures today');
