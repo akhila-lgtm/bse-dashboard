@@ -206,12 +206,24 @@ async function getWiseData() {
     })),
   };
 
-  // Teacher availability — runs after teachers are loaded
-  const availability = teachers.error
-    ? []
-    : await getTeacherAvailability(teachers.items);
+  return { students, teachers, sessions, courses };
+}
 
-  return { students, teachers, sessions, courses, availability };
+async function getAvailabilityData() {
+  const tchRes = await wiseGet(`/institutes/${INST}/teachers?paginateBy=COUNT&page_size=100&page_number=1`);
+  function parse(res, arrayKey) {
+    if (!res.ok) return { items: [], error: res.error };
+    const inner = res.raw?.data ?? {};
+    const arr   = Array.isArray(inner[arrayKey]) ? inner[arrayKey] : Array.isArray(inner) ? inner : [];
+    return { items: arr, error: null };
+  }
+  const tchRaw = parse(tchRes, 'teachers');
+  const teachers = tchRaw.items.map(t => ({
+    name:   t.userId?.name || '—',
+    userId: t.userId?._id,
+  }));
+  const availability = tchRaw.error ? [] : await getTeacherAvailability(teachers);
+  return { availability };
 }
 
 async function getRazorpayLinks(from, to) {
@@ -288,6 +300,11 @@ app.get('/api/links', async (req, res) => {
   const range  = (from && to) ? { from, to } : rangeFor(preset);
   const links  = await getRazorpayLinks(range.from, range.to);
   res.json({ links, from: range.from, to: range.to, timestamp: Date.now() });
+});
+
+app.get('/api/availability', async (req, res) => {
+  const data = await getAvailabilityData();
+  res.json({ ...data, timestamp: Date.now() });
 });
 
 app.get('/api/all', async (req, res) => {

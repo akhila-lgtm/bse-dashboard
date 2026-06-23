@@ -953,9 +953,27 @@ function renderStudentProgress(allSessions, students) {
   </tr>`).join('');
 }
 
+/* ── Availability (deferred, loaded after main data) ── */
+async function loadAvailability() {
+  startSpin('sp-av');
+  try {
+    const res = await fetch('/api/availability');
+    const d   = await res.json();
+    window._avData = d.availability || [];
+    g('cnt-av').textContent = window._avData.length + ' tutors';
+    renderAvailabilityTable(window._avData);
+    if (window._teachersData) renderTeachersTable(window._teachersData, window._avData);
+  } catch(e) {
+    console.error('Availability load failed:', e);
+    emptyRow('tb-av', 5, 'Failed to load availability');
+  }
+  stopSpin('sp-av');
+}
+
 /* ── loadAll ── */
 async function loadAll() {
-  ['sp-rzp-txn','sp-sessions','sp-teachers','sp-av','sp-progress'].forEach(startSpin);
+  ['sp-rzp-txn','sp-sessions','sp-teachers','sp-progress'].forEach(startSpin);
+  startSpin('sp-av');
   loadLinks(linksPreset);
   try {
     const res = await fetch('/api/all');
@@ -1009,21 +1027,19 @@ async function loadAll() {
     /* Today's KPIs */
     computeTodayKPIs();
 
-    /* Teachers (merged with availability) */
+    /* Teachers (no availability yet — renders without slot/session data) */
     g('cnt-teachers').textContent = fmtN(W.teachers.count)+' teachers';
     if (W.teachers.error) { emptyRow('tb-teachers',7,W.teachers.error); }
-    else { renderTeachersTable(W.teachers, d.wise.availability); }
+    else { renderTeachersTable(W.teachers, []); }
     stopSpin('sp-teachers');
 
     /* Student Progress table (derived from loaded sessions) */
     renderStudentProgress([...window._sesUpcoming, ...window._sesPast], W.students.items || []);
     stopSpin('sp-progress');
 
-    /* Availability table */
-    window._avData = d.wise.availability || [];
-    g('cnt-av').textContent = window._avData.length+' tutors';
-    renderAvailabilityTable(window._avData);
-    stopSpin('sp-av');
+    /* Availability loads separately after main data */
+    window._teachersData = W.teachers;
+    loadAvailability();
 
     g('last-upd').textContent = new Date().toLocaleTimeString('en-IN');
 
@@ -1038,7 +1054,7 @@ async function loadAll() {
 
   } catch(err) {
     console.error(err);
-    ['sp-rzp-txn','sp-sessions','sp-teachers','sp-av','sp-progress'].forEach(stopSpin);
+    ['sp-rzp-txn','sp-sessions','sp-teachers','sp-progress'].forEach(stopSpin);
   }
 }
 
